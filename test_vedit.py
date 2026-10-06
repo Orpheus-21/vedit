@@ -200,6 +200,34 @@ class VeditTest(unittest.TestCase):
         # Each tile is 100x75 plus 4 pixels of border on every side.
         self.assertEqual(size, f"{3 * 108}x{2 * 83}")
 
+    def test_commands_that_encode_accept_an_odd_size(self):
+        odd = self.dir / "odd.mp4"
+        subprocess.run(
+            ["ffmpeg", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=size=321x241:rate=25:duration=2",
+             "-f", "lavfi", "-i", "sine=duration=2", "-pix_fmt", "yuv420p", "-c:v", "mpeg4",
+             "-shortest", str(odd)],
+            check=True,
+        )
+        logo = self.dir / "logo_odd.png"
+        subprocess.run(
+            ["ffmpeg", "-loglevel", "error", "-f", "lavfi", "-i", "color=red:s=40x40",
+             "-frames:v", "1", str(logo)],
+            check=True,
+        )
+        cases = {
+            "trim": (["trim", str(odd), "0", "1"], "320x240"),
+            "speed": (["speed", str(odd), "2"], "320x240"),
+            "rotate": (["rotate", str(odd), "90"], "240x320"),
+            "compress": (["compress", str(odd)], "320x240"),
+            "watermark": (["watermark", str(odd), str(logo)], "320x240"),
+            "join": (["join", str(odd), str(odd)], "320x240"),
+        }
+        for name, (args, size) in cases.items():
+            with self.subTest(command=name):
+                out = self.dir / f"odd_{name}.mp4"
+                vedit.main([*args, "-o", str(out)])
+                self.assertEqual(self.video_size(out), size)
+
     # The encoder libx264 cannot write a clip with an odd size. ffmpeg fails after it opens the output.
     FAILING_ARGS = ["-vf", "scale=321:241", "-c:v", "libx264", "-pix_fmt", "yuv420p"]
 

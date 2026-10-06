@@ -10,6 +10,10 @@ import tempfile
 from pathlib import Path
 
 
+# H.264 needs an even width and an even height. This filter cuts off one pixel of an odd side.
+EVEN = "scale=trunc(iw/2)*2:trunc(ih/2)*2"
+
+
 def fail(message):
     sys.exit(f"vedit: error: {message}")
 
@@ -103,7 +107,7 @@ def cmd_trim(a):
     src = check_input(a.input)
     out = Path(a.output) if a.output else default_out(src, "trim")
     # ponytail: re-encodes for exact cuts, add a --fast stream copy mode if speed matters
-    args = ["-i", str(src), "-ss", a.start]
+    args = ["-i", str(src), "-vf", EVEN, "-ss", a.start]
     if a.end:
         args += ["-to", a.end]
     run_ffmpeg(args, out, a.force)
@@ -114,6 +118,7 @@ def cmd_join(a):
     out = Path(a.output) if a.output else default_out(srcs[0], "joined")
     # Every clip gets the size and the frame rate of the first clip. Black bars keep the aspect ratio.
     w, h, fps = video_format(srcs[0])
+    w, h = w - w % 2, h - h % 2
     fit = (f"scale={w}:{h}:force_original_aspect_ratio=decrease,"
            f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps={fps}")
     # ponytail: no crossfade, and the output has no sound if one clip has no sound
@@ -137,7 +142,7 @@ def cmd_speed(a):
     src = check_input(a.input)
     out = Path(a.output) if a.output else default_out(src, f"x{a.factor:g}")
     run_ffmpeg(
-        ["-i", str(src), "-vf", f"setpts=PTS/{a.factor}", "-af", f"atempo={a.factor}"],
+        ["-i", str(src), "-vf", f"setpts=PTS/{a.factor},{EVEN}", "-af", f"atempo={a.factor}"],
         out, a.force,
     )
 
@@ -156,7 +161,7 @@ def cmd_compress(a):
     src = check_input(a.input)
     out = Path(a.output) if a.output else default_out(src, "small", ".mp4")
     run_ffmpeg(
-        ["-i", str(src), "-c:v", "libx264", "-crf", str(a.crf), "-preset", "medium",
+        ["-i", str(src), "-vf", EVEN, "-c:v", "libx264", "-crf", str(a.crf), "-preset", "medium",
          "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart"],
         out, a.force,
     )
@@ -200,7 +205,7 @@ ROTATE_FILTERS = {90: "transpose=1", 180: "hflip,vflip", 270: "transpose=2"}
 def cmd_rotate(a):
     src = check_input(a.input)
     out = Path(a.output) if a.output else default_out(src, f"rot{a.degrees}")
-    run_ffmpeg(["-i", str(src), "-vf", ROTATE_FILTERS[a.degrees], "-c:a", "copy"], out, a.force)
+    run_ffmpeg(["-i", str(src), "-vf", f"{ROTATE_FILTERS[a.degrees]},{EVEN}", "-c:a", "copy"], out, a.force)
 
 
 # ffmpeg overlay positions. W and H are the video size, w and h the logo size, M the margin.
@@ -220,7 +225,7 @@ def cmd_watermark(a):
     logo = check_input(a.image)
     out = Path(a.output) if a.output else default_out(src, "mark")
     pos = POSITIONS[a.position].replace("M", str(a.margin))
-    graph = f"[1:v]scale={a.width}:-1[wm];[0:v][wm]overlay={pos}[v]"
+    graph = f"[0:v]{EVEN}[base];[1:v]scale={a.width}:-1[wm];[base][wm]overlay={pos}[v]"
     run_ffmpeg(
         ["-i", str(src), "-i", str(logo), "-filter_complex", graph,
          "-map", "[v]", "-map", "0:a?", "-c:a", "copy"],
