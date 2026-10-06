@@ -16,6 +16,12 @@ EVEN = "scale=trunc(iw/2)*2:trunc(ih/2)*2"
 PIX_FMT = ["-pix_fmt", "yuv420p"]
 
 
+def ff(path):
+    """Return a path in the form that ffmpeg and ffprobe read as a file.
+    Without the prefix, ffmpeg reads "a:" in "a:b.mp4" as a protocol name."""
+    return f"file:{path}"
+
+
 def fail(message):
     sys.exit(f"vedit: error: {message}")
 
@@ -48,7 +54,7 @@ def run_ffmpeg(args, out, force, quiet=False):
         fail("ffmpeg is not installed or not in PATH")
     if out.exists() and not force:
         fail(f"output exists: {out} (use --force to overwrite)")
-    run_tool(["ffmpeg", "-hide_banner", "-loglevel", "error", "-stats", "-y", *args, str(out)],
+    run_tool(["ffmpeg", "-hide_banner", "-loglevel", "error", "-stats", "-y", *args, ff(out)],
              out, "ffmpeg")
     if not quiet:
         # ffmpeg can exit with code 0 and write nothing, for example for a time after the end.
@@ -67,7 +73,8 @@ def run_magick(tool, args, out, force):
         cmd = [tool]
     else:
         fail("ImageMagick is not installed or not in PATH")
-    run_tool([*cmd, *args, str(out)], out, "ImageMagick")
+    # An absolute path keeps ImageMagick from reading "a:" in "a:b.jpg" as a format name.
+    run_tool([*cmd, *args, str(out.absolute())], out, "ImageMagick")
 
 
 def ffprobe(src, entries, fmt, stream="v:0"):
@@ -76,7 +83,7 @@ def ffprobe(src, entries, fmt, stream="v:0"):
         fail("ffprobe is not installed or not in PATH")
     r = subprocess.run(
         ["ffprobe", "-v", "error", "-select_streams", stream, "-show_entries", entries,
-         "-of", fmt, str(src)],
+         "-of", fmt, ff(src)],
         capture_output=True, text=True,
     )
     return r.stdout.strip()
@@ -109,7 +116,7 @@ def cmd_trim(a):
     src = check_input(a.input)
     out = Path(a.output) if a.output else default_out(src, "trim")
     # ponytail: re-encodes for exact cuts, add a --fast stream copy mode if speed matters
-    args = ["-i", str(src), "-vf", EVEN, *PIX_FMT, "-ss", a.start]
+    args = ["-i", ff(src), "-vf", EVEN, *PIX_FMT, "-ss", a.start]
     if a.end:
         args += ["-to", a.end]
     run_ffmpeg(args, out, a.force)
@@ -127,7 +134,7 @@ def cmd_join(a):
     with_audio = all(ffprobe(s, "stream=codec_type", "csv=p=0", "a:0") for s in srcs)
     inputs, parts, labels = [], [], ""
     for i, src in enumerate(srcs):
-        inputs += ["-i", str(src)]
+        inputs += ["-i", ff(src)]
         parts.append(f"[{i}:v]{fit}[v{i}]")
         labels += f"[v{i}]"
         if with_audio:
@@ -144,7 +151,7 @@ def cmd_speed(a):
     src = check_input(a.input)
     out = Path(a.output) if a.output else default_out(src, f"x{a.factor:g}")
     run_ffmpeg(
-        ["-i", str(src), "-vf", f"setpts=PTS/{a.factor},{EVEN}", *PIX_FMT, "-af", f"atempo={a.factor}"],
+        ["-i", ff(src), "-vf", f"setpts=PTS/{a.factor},{EVEN}", *PIX_FMT, "-af", f"atempo={a.factor}"],
         out, a.force,
     )
 
@@ -156,14 +163,14 @@ def cmd_gif(a):
         f"fps={a.fps},scale={a.width}:-1:flags=lanczos,"
         "split[a][b];[a]palettegen[p];[b][p]paletteuse"
     )
-    run_ffmpeg(["-i", str(src), "-vf", graph, "-loop", "0"], out, a.force)
+    run_ffmpeg(["-i", ff(src), "-vf", graph, "-loop", "0"], out, a.force)
 
 
 def cmd_compress(a):
     src = check_input(a.input)
     out = Path(a.output) if a.output else default_out(src, "small", ".mp4")
     run_ffmpeg(
-        ["-i", str(src), "-vf", EVEN, *PIX_FMT, "-c:v", "libx264", "-crf", str(a.crf), "-preset", "medium",
+        ["-i", ff(src), "-vf", EVEN, *PIX_FMT, "-c:v", "libx264", "-crf", str(a.crf), "-preset", "medium",
          "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart"],
         out, a.force,
     )
@@ -173,19 +180,19 @@ def cmd_audio(a):
     src = check_input(a.input)
     out = Path(a.output) if a.output else default_out(src, "audio", ".mp3")
     # ffmpeg picks the audio format from the output extension: .mp3, .wav, .m4a, .flac
-    run_ffmpeg(["-i", str(src), "-vn"], out, a.force)
+    run_ffmpeg(["-i", ff(src), "-vn"], out, a.force)
 
 
 def cmd_mute(a):
     src = check_input(a.input)
     out = Path(a.output) if a.output else default_out(src, "mute")
-    run_ffmpeg(["-i", str(src), "-an", "-c:v", "copy"], out, a.force)
+    run_ffmpeg(["-i", ff(src), "-an", "-c:v", "copy"], out, a.force)
 
 
 def cmd_frame(a):
     src = check_input(a.input)
     out = Path(a.output) if a.output else default_out(src, "frame", ".png")
-    run_ffmpeg(["-ss", a.time, "-i", str(src), "-frames:v", "1"], out, a.force)
+    run_ffmpeg(["-ss", a.time, "-i", ff(src), "-frames:v", "1"], out, a.force)
 
 
 def cmd_resize(a):
@@ -198,7 +205,7 @@ def cmd_resize(a):
     src = check_input(a.input)
     out = Path(a.output) if a.output else default_out(src, "resized")
     scale = f"scale={a.width or -2}:{a.height or -2}"
-    run_ffmpeg(["-i", str(src), "-vf", scale, "-c:a", "copy"], out, a.force)
+    run_ffmpeg(["-i", ff(src), "-vf", scale, "-c:a", "copy"], out, a.force)
 
 
 ROTATE_FILTERS = {90: "transpose=1", 180: "hflip,vflip", 270: "transpose=2"}
@@ -207,7 +214,7 @@ ROTATE_FILTERS = {90: "transpose=1", 180: "hflip,vflip", 270: "transpose=2"}
 def cmd_rotate(a):
     src = check_input(a.input)
     out = Path(a.output) if a.output else default_out(src, f"rot{a.degrees}")
-    run_ffmpeg(["-i", str(src), "-vf", f"{ROTATE_FILTERS[a.degrees]},{EVEN}", *PIX_FMT, "-c:a", "copy"], out, a.force)
+    run_ffmpeg(["-i", ff(src), "-vf", f"{ROTATE_FILTERS[a.degrees]},{EVEN}", *PIX_FMT, "-c:a", "copy"], out, a.force)
 
 
 # ffmpeg overlay positions. W and H are the video size, w and h the logo size, M the margin.
@@ -229,7 +236,7 @@ def cmd_watermark(a):
     pos = POSITIONS[a.position].replace("M", str(a.margin))
     graph = f"[0:v]{EVEN}[base];[1:v]scale={a.width}:-1[wm];[base][wm]overlay={pos}[v]"
     run_ffmpeg(
-        ["-i", str(src), "-i", str(logo), "-filter_complex", graph,
+        ["-i", ff(src), "-i", ff(logo), "-filter_complex", graph,
          "-map", "[v]", "-map", "0:a?", *PIX_FMT, "-c:a", "copy"],
         out, a.force,
     )
@@ -256,7 +263,7 @@ def cmd_title(a):
         )
         # The silent audio track lets the title card join with clips that have sound.
         run_ffmpeg(
-            ["-loop", "1", "-framerate", str(a.fps), "-i", str(png),
+            ["-loop", "1", "-framerate", str(a.fps), "-i", ff(png),
              "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo",
              "-t", str(a.seconds), "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac"],
             out, a.force,
@@ -275,7 +282,7 @@ def cmd_sheet(a):
     with tempfile.TemporaryDirectory() as tmp:
         # Take one frame from the middle of each equal part of the clip.
         run_ffmpeg(
-            ["-ss", str(length / (2 * count)), "-i", str(src),
+            ["-ss", str(length / (2 * count)), "-i", ff(src),
              "-vf", f"fps={count}/{length},scale={a.width}:-1", "-frames:v", str(count)],
             Path(tmp) / "%03d.png", True, quiet=True,
         )

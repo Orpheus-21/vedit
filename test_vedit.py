@@ -1,4 +1,5 @@
 """Check each vedit command on a short generated clip. Run: python3 -m unittest"""
+import os
 import subprocess
 import tempfile
 import unittest
@@ -256,6 +257,23 @@ class VeditTest(unittest.TestCase):
                 out = self.dir / f"wide_{name}.mp4"
                 vedit.main([*args, "-o", str(out)])
                 self.assertEqual(vedit.ffprobe(out, "stream=pix_fmt", "csv=p=0"), "yuv420p")
+
+    def test_file_names_with_a_colon(self):
+        # ffmpeg reads "a:" as a protocol name. ImageMagick reads it as a format name.
+        # The bug shows only with relative paths, so the test runs in the temporary folder.
+        self.addCleanup(os.chdir, os.getcwd())
+        os.chdir(self.dir)
+        Path("a:b.mp4").write_bytes(self.clip.read_bytes())
+        for args, name in [
+            (["mute", "a:b.mp4"], "a:b_mute.mp4"),
+            (["frame", "a:b.mp4", "1"], "a:b_frame.png"),
+            (["sheet", "a:b.mp4", "--cols", "2", "--rows", "1"], "a:b_sheet.jpg"),
+            (["join", "a:b.mp4", "a:b.mp4"], "a:b_joined.mp4"),
+            (["title", "x", "--size", "320x240", "-o", "t:1.mp4"], "t:1.mp4"),
+        ]:
+            with self.subTest(command=args[0]):
+                vedit.main(args)
+                self.assertTrue(Path(name).stat().st_size > 0)
 
     # The encoder libx264 cannot write a clip with an odd size. ffmpeg fails after it opens the output.
     FAILING_ARGS = ["-vf", "scale=321:241", "-c:v", "libx264", "-pix_fmt", "yuv420p"]
