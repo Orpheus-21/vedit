@@ -146,11 +146,7 @@ class VeditTest(unittest.TestCase):
     def test_frame(self):
         out = self.dir / "f.png"
         vedit.main(["frame", str(self.clip), "2", "-o", str(out)])
-        size = subprocess.run(
-            ["magick", "identify", "-format", "%wx%h", str(out)],
-            capture_output=True, text=True, check=True,
-        ).stdout
-        self.assertEqual(size, "320x240")
+        self.assertEqual(self.video_size(out), "320x240")
 
     def test_frame_after_the_end(self):
         with self.assertRaises(SystemExit):
@@ -183,15 +179,26 @@ class VeditTest(unittest.TestCase):
 
     def is_red(self, video, x, y):
         """Return True if the pixel at x, y in the first frame is red."""
-        frame = self.dir / "px.png"
-        subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", str(video), "-frames:v", "1", str(frame)], check=True)
-        test = f"%[fx:p{{{x},{y}}}.r>0.8&&p{{{x},{y}}}.g<0.3&&p{{{x},{y}}}.b<0.3]"
-        return subprocess.run(["magick", str(frame), "-format", test, "info:"],
-                              capture_output=True, text=True, check=True).stdout == "1"
+        pixel = subprocess.run(
+            ["ffmpeg", "-loglevel", "error", "-i", str(video), "-frames:v", "1",
+             "-vf", f"format=rgb24,crop=1:1:{x}:{y}", "-f", "rawvideo", "-"],
+            capture_output=True, check=True,
+        ).stdout
+        red, green, blue = pixel
+        return red > 204 and green < 77 and blue < 77
+
+    def make_logo(self, name):
+        """Make a red square PNG file of 40x40 pixels and return its path."""
+        logo = self.dir / name
+        subprocess.run(
+            ["ffmpeg", "-loglevel", "error", "-f", "lavfi", "-i", "color=red:s=40x40",
+             "-frames:v", "1", str(logo)],
+            check=True,
+        )
+        return logo
 
     def test_watermark(self):
-        logo = self.dir / "logo.png"
-        subprocess.run(["magick", "-size", "40x40", "xc:red", str(logo)], check=True)
+        logo = self.make_logo("logo.png")
         top = self.dir / "wt.mp4"
         vedit.main(["watermark", str(self.clip), str(logo), "--width", "40",
                     "--position", "top-left", "-o", str(top)])
@@ -223,12 +230,8 @@ class VeditTest(unittest.TestCase):
     def test_sheet(self):
         out = self.dir / "sheet.png"
         vedit.main(["sheet", str(self.clip), "--cols", "3", "--rows", "2", "--width", "100", "-o", str(out)])
-        size = subprocess.run(
-            ["magick", "identify", "-format", "%wx%h", str(out)],
-            capture_output=True, text=True, check=True,
-        ).stdout
         # Each tile is 100x75 plus 4 pixels of border on every side.
-        self.assertEqual(size, f"{3 * 108}x{2 * 83}")
+        self.assertEqual(self.video_size(out), f"{3 * 108}x{2 * 83}")
 
     def test_commands_that_encode_accept_an_odd_size(self):
         odd = self.dir / "odd.mp4"
@@ -238,12 +241,7 @@ class VeditTest(unittest.TestCase):
              "-shortest", str(odd)],
             check=True,
         )
-        logo = self.dir / "logo_odd.png"
-        subprocess.run(
-            ["ffmpeg", "-loglevel", "error", "-f", "lavfi", "-i", "color=red:s=40x40",
-             "-frames:v", "1", str(logo)],
-            check=True,
-        )
+        logo = self.make_logo("logo_odd.png")
         cases = {
             "trim": (["trim", str(odd), "0", "1"], "320x240"),
             "speed": (["speed", str(odd), "2"], "320x240"),
@@ -267,12 +265,7 @@ class VeditTest(unittest.TestCase):
              "-shortest", str(wide)],
             check=True,
         )
-        logo = self.dir / "logo_wide.png"
-        subprocess.run(
-            ["ffmpeg", "-loglevel", "error", "-f", "lavfi", "-i", "color=red:s=40x40",
-             "-frames:v", "1", str(logo)],
-            check=True,
-        )
+        logo = self.make_logo("logo_wide.png")
         cases = {
             "trim": ["trim", str(wide), "0", "1"],
             "speed": ["speed", str(wide), "2"],
