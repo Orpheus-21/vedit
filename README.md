@@ -241,4 +241,4 @@ python3 -m unittest
 
 ## License
 
-MIT. See the file `LICENSE`.
+GPL version 3 or any later version. See the file `LICENSE`.
