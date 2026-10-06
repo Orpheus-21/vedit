@@ -24,7 +24,7 @@ Each vedit command runs one `ffmpeg` or ImageMagick job. You give the command a 
 
 ## Requirements
 
-* Python 3. The tests ran on Python 3.14 and on Python 3.12.
+* Python 3.9 or later. The tests pass on Python 3.9, 3.10, 3.11, 3.12, 3.13, and 3.14. The tests also pass on Python 3.8, and `python3 vedit.py` runs there. The install as a command needs Python 3.9, because the build needs `setuptools` 77. I could not test Python 3.7.
 * `ffmpeg` and `ffprobe`. The `ffmpeg` build must include the encoders `libx264`, `aac`, and `libmp3lame`. The tests ran on `ffmpeg` 9.0.1 and on `ffmpeg` 6.1.
 * ImageMagick. The commands `title` and `sheet` need it. The other commands do not. The tests ran on ImageMagick 7.1.2 and on ImageMagick 6.9. If the command `magick` is missing, vedit uses the ImageMagick 6 commands `convert` and `montage`.
 * Linux. The tests ran on Linux. I do not know if vedit works on other systems.
