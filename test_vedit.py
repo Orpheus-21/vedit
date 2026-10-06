@@ -329,6 +329,13 @@ class VeditTest(unittest.TestCase):
                 vedit.main([*args, "-o", str(out)])
                 self.assertEqual(streams(out), ["video"])
 
+    def test_output_must_not_be_the_input(self):
+        before = self.clip.read_bytes()
+        with self.assertRaises(SystemExit) as caught:
+            vedit.main(["-f", "mute", str(self.clip), "-o", str(self.clip)])
+        self.assertIn("same file", str(caught.exception.code))
+        self.assertEqual(self.clip.read_bytes(), before)
+
     def test_no_overwrite_without_force(self):
         out = self.dir / "o.mp4"
         out.write_text("x")

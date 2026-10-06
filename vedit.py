@@ -52,6 +52,10 @@ def run_ffmpeg(args, out, force, quiet=False):
     """Run ffmpeg with an argument list."""
     if shutil.which("ffmpeg") is None:
         fail("ffmpeg is not installed or not in PATH")
+    # Each value that follows -i is an input path. The prefix file: is not part of the path.
+    inputs = [a[5:] if a.startswith("file:") else a for prev, a in zip(args, args[1:]) if prev == "-i"]
+    if any(Path(i).resolve() == out.resolve() for i in inputs):
+        fail(f"the output and the input are the same file: {out}")
     if out.exists() and not force:
         fail(f"output exists: {out} (use --force to overwrite)")
     run_tool(["ffmpeg", "-hide_banner", "-loglevel", "error", "-stats", "-y", *args, ff(out)],
