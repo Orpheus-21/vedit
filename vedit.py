@@ -274,6 +274,8 @@ def cmd_title(a):
         fail("size must be WIDTHxHEIGHT with even numbers, for example 1280x720")
     w, h = int(m[1]), int(m[2])
     out = Path(a.output) if a.output else Path("title.mp4")
+    if not a.text.strip():
+        fail("title text must not be empty")
     check_color(a.bg)
     check_color(a.fg)
     # ImageMagick reads a file for text that starts with @ and expands %w style codes.
