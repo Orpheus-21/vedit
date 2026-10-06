@@ -291,6 +291,15 @@ class VeditTest(unittest.TestCase):
             vedit.run_ffmpeg(["-i", str(self.clip), *self.FAILING_ARGS], out, True)
         self.assertTrue(out.exists())
 
+    def test_force_before_and_after_the_command_name(self):
+        out = self.dir / "f.mp4"
+        out.write_text("x")
+        for args in (["-f", "mute", str(self.clip)], ["mute", str(self.clip), "-f"]):
+            with self.subTest(args=args):
+                out.write_text("x")
+                vedit.main([*args, "-o", str(out)])
+                self.assertEqual(streams(out), ["video"])
+
     def test_no_overwrite_without_force(self):
         out = self.dir / "o.mp4"
         out.write_text("x")

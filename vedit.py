@@ -304,6 +304,9 @@ def build_parser():
     def add(name, func, help_text):
         sp = sub.add_parser(name, help=help_text, description=help_text)
         sp.add_argument("-o", "--output", help="output file (default: next to the input)")
+        # SUPPRESS keeps the value that -f before the command name set.
+        sp.add_argument("-f", "--force", action="store_true", default=argparse.SUPPRESS,
+                        help="overwrite the output file")
         sp.set_defaults(func=func)
         return sp
 
