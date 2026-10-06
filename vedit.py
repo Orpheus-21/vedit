@@ -281,8 +281,6 @@ def cmd_title(a):
 
 
 def cmd_sheet(a):
-    if a.cols < 1 or a.rows < 1:
-        fail("cols and rows must be 1 or more")
     src = check_input(a.input)
     out = Path(a.output) if a.output else default_out(src, "sheet", ".jpg")
     if out.exists() and not a.force:
@@ -304,6 +302,30 @@ def cmd_sheet(a):
             out, a.force,
         )
     print(f"wrote {out}")
+
+
+def positive_int(text):
+    """An argparse type for a whole number of 1 or more."""
+    value = int(text)
+    if value < 1:
+        raise argparse.ArgumentTypeError("must be 1 or more")
+    return value
+
+
+def positive_number(text):
+    """An argparse type for a number above 0."""
+    value = float(text)
+    if not value > 0:  # This also stops nan.
+        raise argparse.ArgumentTypeError("must be above 0")
+    return value
+
+
+def crf_value(text):
+    """An argparse type for the quality of libx264, from 0 to 51."""
+    value = int(text)
+    if not 0 <= value <= 51:
+        raise argparse.ArgumentTypeError("must be from 0 to 51")
+    return value
 
 
 def build_parser():
@@ -334,26 +356,26 @@ def build_parser():
 
     sp = add("gif", cmd_gif, "make a GIF from a clip")
     sp.add_argument("input")
-    sp.add_argument("--fps", type=int, default=12)
-    sp.add_argument("--width", type=int, default=480, help="largest width in pixels, vedit does not enlarge a clip")
+    sp.add_argument("--fps", type=positive_int, default=12)
+    sp.add_argument("--width", type=positive_int, default=480, help="largest width in pixels, vedit does not enlarge a clip")
 
     sp = add("compress", cmd_compress, "make the file smaller (H.264)")
     sp.add_argument("input")
-    sp.add_argument("--crf", type=int, default=28, help="quality, 18 is high, 35 is low")
+    sp.add_argument("--crf", type=crf_value, default=28, help="quality, 18 is high, 35 is low")
 
     sp = add("title", cmd_title, "make a title card video (needs ImageMagick)")
     sp.add_argument("text")
-    sp.add_argument("--seconds", type=float, default=3)
+    sp.add_argument("--seconds", type=positive_number, default=3)
     sp.add_argument("--size", default="1280x720", help="WIDTHxHEIGHT, even numbers")
-    sp.add_argument("--fps", type=int, default=25)
+    sp.add_argument("--fps", type=positive_int, default=25)
     sp.add_argument("--bg", default="black", help="background color")
     sp.add_argument("--fg", default="white", help="text color")
 
     sp = add("sheet", cmd_sheet, "make a contact sheet of frames (needs ImageMagick)")
     sp.add_argument("input")
-    sp.add_argument("--cols", type=int, default=4)
-    sp.add_argument("--rows", type=int, default=3)
-    sp.add_argument("--width", type=int, default=320, help="largest width of each frame in pixels, vedit does not enlarge a clip")
+    sp.add_argument("--cols", type=positive_int, default=4)
+    sp.add_argument("--rows", type=positive_int, default=3)
+    sp.add_argument("--width", type=positive_int, default=320, help="largest width of each frame in pixels, vedit does not enlarge a clip")
 
     sp = add("audio", cmd_audio, "save the sound of a clip as an audio file")
     sp.add_argument("input")

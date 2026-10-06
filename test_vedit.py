@@ -361,6 +361,26 @@ class VeditTest(unittest.TestCase):
         self.assertEqual(stderr.getvalue(), "vedit: interrupted\n")
         self.assertFalse(out.exists())
 
+    def test_bad_numbers_stop_with_a_usage_error(self):
+        clip = str(self.clip)
+        for args in (
+            ["compress", clip, "--crf", "99"],
+            ["compress", clip, "--crf", "-1"],
+            ["gif", clip, "--fps", "0"],
+            ["gif", clip, "--width", "0"],
+            ["title", "x", "--fps", "0"],
+            ["title", "x", "--seconds", "0"],
+            ["title", "x", "--seconds", "nan"],
+            ["sheet", clip, "--width", "0"],
+            ["sheet", clip, "--cols", "0"],
+            ["sheet", clip, "--rows", "0"],
+        ):
+            with self.subTest(args=args), contextlib.redirect_stderr(io.StringIO()), \
+                    self.assertRaises(SystemExit) as caught:
+                vedit.main(args)
+            # The code 2 is the usage error of argparse. ffmpeg errors give the code 1.
+            self.assertEqual(caught.exception.code, 2)
+
     def test_no_overwrite_without_force(self):
         out = self.dir / "o.mp4"
         out.write_text("x")
