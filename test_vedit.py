@@ -1,11 +1,18 @@
 """Check each vedit command on a short generated clip. Run: python3 -m unittest"""
 import os
+import shutil
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
 import vedit
+
+needs_ffmpeg = unittest.skipUnless(
+    shutil.which("ffmpeg") and shutil.which("ffprobe"), "ffmpeg and ffprobe are not installed")
+needs_imagemagick = unittest.skipUnless(
+    shutil.which("magick") or (shutil.which("convert") and shutil.which("montage")),
+    "ImageMagick is not installed")
 
 
 def duration(path):
@@ -27,6 +34,7 @@ def streams(path):
     return out.stdout.split()
 
 
+@needs_ffmpeg
 class VeditTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -113,6 +121,7 @@ class VeditTest(unittest.TestCase):
         vedit.main(["gif", str(self.clip), "-o", str(out)])
         self.assertTrue(out.stat().st_size > 0)
 
+    @needs_imagemagick
     def test_gif_and_sheet_do_not_enlarge_a_small_clip(self):
         # The clip is 320 pixels wide. The default GIF width is 480.
         gif = self.dir / "small.gif"
@@ -209,6 +218,7 @@ class VeditTest(unittest.TestCase):
         self.assertTrue(self.is_red(bottom, 290, 210))
         self.assertFalse(self.is_red(bottom, 20, 20))
 
+    @needs_imagemagick
     def test_title_joins_with_clip(self):
         card = self.dir / "card.mp4"
         vedit.main(["title", "Hello 100%", "--seconds", "2", "--size", "320x240", "-o", str(card)])
@@ -217,6 +227,7 @@ class VeditTest(unittest.TestCase):
         vedit.main(["join", str(card), str(self.clip), "-o", str(out)])
         self.assertAlmostEqual(duration(out), 6, delta=0.3)
 
+    @needs_imagemagick
     def test_title_text_is_not_read_as_a_file(self):
         # ImageMagick would try to open this path if the text were not escaped.
         card = self.dir / "at.mp4"
@@ -227,6 +238,7 @@ class VeditTest(unittest.TestCase):
         with self.assertRaises(SystemExit):
             vedit.main(["title", "x", "--size", "321x240"])
 
+    @needs_imagemagick
     def test_sheet(self):
         out = self.dir / "sheet.png"
         vedit.main(["sheet", str(self.clip), "--cols", "3", "--rows", "2", "--width", "100", "-o", str(out)])
@@ -280,6 +292,7 @@ class VeditTest(unittest.TestCase):
                 vedit.main([*args, "-o", str(out)])
                 self.assertEqual(vedit.ffprobe(out, "stream=pix_fmt", "csv=p=0"), "yuv420p")
 
+    @needs_imagemagick
     def test_file_names_with_a_colon(self):
         # ffmpeg reads "a:" as a protocol name. ImageMagick reads it as a format name.
         # The bug shows only with relative paths, so the test runs in the temporary folder.
