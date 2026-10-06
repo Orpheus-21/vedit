@@ -60,7 +60,7 @@ python3 vedit.py --help
 The general form is:
 
 ```
-python3 vedit.py [-f] COMMAND INPUT [options]
+python3 vedit.py COMMAND INPUT [options]
 ```
 
 Use `python3 vedit.py COMMAND --help` to see the options of one command.
@@ -171,7 +171,7 @@ vedit has no configuration file. All settings are command-line options.
 | Option | Commands | Default | Effect |
 |---|---|---|---|
 | `-o`, `--output` | all | see below | The path of the output file. |
-| `-f`, `--force` | all | off | Overwrites an output file that exists. Write it before the command name. |
+| `-f`, `--force` | all | off | Overwrites an output file that exists. You can write it before or after the command name. |
 | `--fps` | `gif` | 12 | Frames per second of the GIF. |
 | `--width` | `gif` | 480 | Width of the GIF in pixels. |
 | `--crf` | `compress` | 28 | Quality. A lower value gives higher quality. |
