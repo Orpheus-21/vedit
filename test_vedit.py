@@ -1,10 +1,13 @@
 """Check each vedit command on a short generated clip. Run: python3 -m unittest"""
+import contextlib
+import io
 import os
 import shutil
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import vedit
 
@@ -341,6 +344,22 @@ class VeditTest(unittest.TestCase):
             vedit.main(["-f", "mute", str(self.clip), "-o", str(self.clip)])
         self.assertIn("same file", str(caught.exception.code))
         self.assertEqual(self.clip.read_bytes(), before)
+
+    def test_ctrl_c_deletes_the_new_output_and_exits_with_130(self):
+        out = self.dir / "i.mp4"
+
+        def interrupt(cmd, *args, **kwargs):
+            # ffmpeg has written a part of the output when the user presses Ctrl+C.
+            Path(cmd[-1][len("file:"):]).write_text("part")
+            raise KeyboardInterrupt
+
+        stderr = io.StringIO()
+        with mock.patch("vedit.subprocess.run", side_effect=interrupt), \
+                contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit) as caught:
+            vedit.main(["mute", str(self.clip), "-o", str(out)])
+        self.assertEqual(caught.exception.code, 130)
+        self.assertEqual(stderr.getvalue(), "vedit: interrupted\n")
+        self.assertFalse(out.exists())
 
     def test_no_overwrite_without_force(self):
         out = self.dir / "o.mp4"

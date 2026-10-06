@@ -40,11 +40,15 @@ def check_input(path):
 
 def run_tool(cmd, out, name):
     """Run a program with an argument list. Never use a shell.
-    If the program fails, delete the output file that this run made, then stop."""
+    If the program fails or the user presses Ctrl+C, delete the output file that this run made."""
     existed = out.exists()
-    if subprocess.run(cmd).returncode != 0:
-        if not existed:
+    done = False
+    try:
+        done = subprocess.run(cmd).returncode == 0
+    finally:
+        if not done and not existed:
             out.unlink(missing_ok=True)
+    if not done:
         fail(f"{name} failed")
 
 
@@ -381,7 +385,11 @@ def build_parser():
 
 def main(argv=None):
     a = build_parser().parse_args(argv)
-    a.func(a)
+    try:
+        a.func(a)
+    except KeyboardInterrupt:
+        print("vedit: interrupted", file=sys.stderr)
+        sys.exit(130)
 
 
 if __name__ == "__main__":
