@@ -173,7 +173,7 @@ vedit has no configuration file. All settings are command-line options.
 | `-o`, `--output` | all | see below | The path of the output file. |
 | `-f`, `--force` | all | off | Overwrites an output file that exists. You can write it before or after the command name. |
 | `--fps` | `gif` | 12 | Frames per second of the GIF. |
-| `--width` | `gif` | 480 | Width of the GIF in pixels. |
+| `--width` | `gif` | 480 | Largest width of the GIF in pixels. vedit does not enlarge a clip. |
 | `--crf` | `compress` | 28 | Quality. A lower value gives higher quality. |
 | `--width`, `--height` | `resize` | none | New size in pixels. Give at least one. |
 | `--position` | `watermark` | `bottom-right` | Place of the logo. |
@@ -186,7 +186,7 @@ vedit has no configuration file. All settings are command-line options.
 | `--fg` | `title` | `white` | Text color. |
 | `--cols` | `sheet` | 4 | Number of columns. |
 | `--rows` | `sheet` | 3 | Number of rows. |
-| `--width` | `sheet` | 320 | Width of each frame in pixels. |
+| `--width` | `sheet` | 320 | Largest width of each frame in pixels. vedit does not enlarge a clip. |
 
 Without `-o`, vedit writes the output next to the input file. The name is the name of the input, then an underscore, then a tag:
 
