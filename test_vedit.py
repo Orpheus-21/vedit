@@ -47,6 +47,21 @@ class VeditTest(unittest.TestCase):
         vedit.main(["trim", str(self.clip), "1", "3", "-o", str(out)])
         self.assertAlmostEqual(duration(out), 2, delta=0.2)
 
+    def test_trim_is_exact_between_keyframes(self):
+        # This clip has only one keyframe, at the start. A cut at 1.5 s is not on a keyframe.
+        sparse = self.dir / "sparse.mp4"
+        subprocess.run(
+            ["ffmpeg", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=size=320x240:rate=25:duration=4",
+             "-c:v", "libx264", "-g", "1000", str(sparse)],
+            check=True,
+        )
+        out = self.dir / "ts.mp4"
+        vedit.main(["trim", str(sparse), "1.5", "3", "-o", str(out)])
+        self.assertAlmostEqual(duration(out), 1.5, delta=0.1)
+        to_end = self.dir / "te.mp4"
+        vedit.main(["trim", str(sparse), "3", "-o", str(to_end)])
+        self.assertAlmostEqual(duration(to_end), 1, delta=0.1)
+
     def test_join(self):
         out = self.dir / "j.mp4"
         vedit.main(["join", str(self.clip), str(self.clip), "-o", str(out)])

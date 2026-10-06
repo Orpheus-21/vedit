@@ -116,10 +116,12 @@ def cmd_trim(a):
     src = check_input(a.input)
     out = Path(a.output) if a.output else default_out(src, "trim")
     # ponytail: re-encodes for exact cuts, add a --fast stream copy mode if speed matters
-    args = ["-i", ff(src), "-vf", EVEN, *PIX_FMT, "-ss", a.start]
+    # Both times come before -i, so ffmpeg jumps to the start and does not decode the clip before it.
+    # The cut stays exact, because ffmpeg encodes the clip again.
+    args = ["-ss", a.start]
     if a.end:
         args += ["-to", a.end]
-    run_ffmpeg(args, out, a.force)
+    run_ffmpeg([*args, "-i", ff(src), "-vf", EVEN, *PIX_FMT], out, a.force)
 
 
 def cmd_join(a):
