@@ -402,6 +402,44 @@ class VeditTest(unittest.TestCase):
             # The code 2 is the usage error of argparse. ffmpeg errors give the code 1.
             self.assertEqual(caught.exception.code, 2)
 
+    def run_in_temporary_folder(self):
+        """Go into the temporary folder with a copy of the clip named clip.mp4 and a logo."""
+        self.addCleanup(os.chdir, os.getcwd())
+        os.chdir(self.dir)
+        Path("clip.mp4").write_bytes(self.clip.read_bytes())
+        Path("logo.png").write_bytes(self.make_logo("logo_names.png").read_bytes())
+
+    def test_default_output_names(self):
+        # The names must match the table in the README.
+        self.run_in_temporary_folder()
+        for args, name in [
+            (["trim", "clip.mp4", "0", "1"], "clip_trim.mp4"),
+            (["join", "clip.mp4", "clip.mp4"], "clip_joined.mp4"),
+            (["speed", "clip.mp4", "2"], "clip_x2.mp4"),
+            (["gif", "clip.mp4"], "clip_gif.gif"),
+            (["compress", "clip.mp4"], "clip_small.mp4"),
+            (["resize", "clip.mp4", "--width", "160"], "clip_resized.mp4"),
+            (["rotate", "clip.mp4", "90"], "clip_rot90.mp4"),
+            (["watermark", "clip.mp4", "logo.png"], "clip_mark.mp4"),
+            (["audio", "clip.mp4"], "clip_audio.mp3"),
+            (["mute", "clip.mp4"], "clip_mute.mp4"),
+            (["frame", "clip.mp4", "1"], "clip_frame.png"),
+        ]:
+            with self.subTest(command=args[0]):
+                vedit.main(args)
+                self.assertTrue(Path(name).stat().st_size > 0)
+
+    @needs_imagemagick
+    def test_default_output_names_with_imagemagick(self):
+        self.run_in_temporary_folder()
+        for args, name in [
+            (["sheet", "clip.mp4", "--cols", "2", "--rows", "1"], "clip_sheet.jpg"),
+            (["title", "x", "--size", "320x240", "--seconds", "1"], "title.mp4"),
+        ]:
+            with self.subTest(command=args[0]):
+                vedit.main(args)
+                self.assertTrue(Path(name).stat().st_size > 0)
+
     def test_no_overwrite_without_force(self):
         out = self.dir / "o.mp4"
         out.write_text("x")
