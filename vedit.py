@@ -26,15 +26,24 @@ def check_input(path):
     return path
 
 
+def run_tool(cmd, out, name):
+    """Run a program with an argument list. Never use a shell.
+    If the program fails, delete the output file that this run made, then stop."""
+    existed = out.exists()
+    if subprocess.run(cmd).returncode != 0:
+        if not existed:
+            out.unlink(missing_ok=True)
+        fail(f"{name} failed")
+
+
 def run_ffmpeg(args, out, force, quiet=False):
-    """Run ffmpeg with an argument list. Never use a shell."""
+    """Run ffmpeg with an argument list."""
     if shutil.which("ffmpeg") is None:
         fail("ffmpeg is not installed or not in PATH")
     if out.exists() and not force:
         fail(f"output exists: {out} (use --force to overwrite)")
-    cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-stats", "-y", *args, str(out)]
-    if subprocess.run(cmd).returncode != 0:
-        fail("ffmpeg failed")
+    run_tool(["ffmpeg", "-hide_banner", "-loglevel", "error", "-stats", "-y", *args, str(out)],
+             out, "ffmpeg")
     if not quiet:
         # ffmpeg can exit with code 0 and write nothing, for example for a time after the end.
         if not out.exists():
@@ -52,8 +61,7 @@ def run_magick(tool, args, out, force):
         cmd = [tool]
     else:
         fail("ImageMagick is not installed or not in PATH")
-    if subprocess.run([*cmd, *args, str(out)]).returncode != 0:
-        fail("ImageMagick failed")
+    run_tool([*cmd, *args, str(out)], out, "ImageMagick")
 
 
 def ffprobe(src, entries, fmt, stream="v:0"):

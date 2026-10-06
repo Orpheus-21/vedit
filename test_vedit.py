@@ -200,6 +200,22 @@ class VeditTest(unittest.TestCase):
         # Each tile is 100x75 plus 4 pixels of border on every side.
         self.assertEqual(size, f"{3 * 108}x{2 * 83}")
 
+    # The encoder libx264 cannot write a clip with an odd size. ffmpeg fails after it opens the output.
+    FAILING_ARGS = ["-vf", "scale=321:241", "-c:v", "libx264", "-pix_fmt", "yuv420p"]
+
+    def test_failed_run_deletes_the_new_output(self):
+        out = self.dir / "new.mp4"
+        with self.assertRaises(SystemExit):
+            vedit.run_ffmpeg(["-i", str(self.clip), *self.FAILING_ARGS], out, False)
+        self.assertFalse(out.exists())
+
+    def test_failed_run_keeps_an_output_that_existed(self):
+        out = self.dir / "old.mp4"
+        out.write_text("x")
+        with self.assertRaises(SystemExit):
+            vedit.run_ffmpeg(["-i", str(self.clip), *self.FAILING_ARGS], out, True)
+        self.assertTrue(out.exists())
+
     def test_no_overwrite_without_force(self):
         out = self.dir / "o.mp4"
         out.write_text("x")
