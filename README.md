@@ -55,6 +55,25 @@ cd vedit
 python3 vedit.py --help
 ```
 
+### Install as a command
+
+You can install vedit as the command `vedit`. Then you do not need to be in the repository folder.
+
+1. Install `ffmpeg` and ImageMagick, as in step 1 above.
+2. Install vedit with `uv`:
+
+```
+uv tool install git+https://github.com/Orpheus-21/vedit.git
+```
+
+3. Show the help text:
+
+```
+vedit --help
+```
+
+I tested this install with `uv`. I did not test `pipx`.
+
 ## Usage
 
 The general form is:
@@ -63,7 +82,7 @@ The general form is:
 python3 vedit.py COMMAND INPUT [options]
 ```
 
-Use `python3 vedit.py COMMAND --help` to see the options of one command.
+Use `python3 vedit.py COMMAND --help` to see the options of one command. If you installed the command `vedit`, write `vedit` in place of `python3 vedit.py` in all examples.
 
 Times are in seconds (`90`) or in the form `H:MM:SS` (`0:01:30.5`).
 
