@@ -286,6 +286,14 @@ class VeditTest(unittest.TestCase):
         with self.assertRaises(SystemExit):
             vedit.main(["title", "", "--size", "320x240"])
 
+    def test_title_text_with_only_spaces_writes_no_file(self):
+        for text in ("", "   ", "\t"):
+            out = self.dir / "empty.mp4"
+            with self.subTest(text=text), self.assertRaises(SystemExit) as caught:
+                vedit.main(["title", text, "--size", "320x240", "-o", str(out)])
+            self.assertIn("title text must not be empty", str(caught.exception.code))
+            self.assertFalse(out.exists())
+
     @needs_imagemagick
     def test_sheet(self):
         out = self.dir / "sheet.png"
