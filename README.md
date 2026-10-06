@@ -168,7 +168,7 @@ python3 vedit.py frame clip.mp4 5
 
 ### title
 
-Makes a video with centered text. The video has a silent audio track, so you can join it with clips that have sound.
+Makes a video with centered text. The text must not be empty. The video has a silent audio track, so you can join it with clips that have sound.
 
 ```
 python3 vedit.py title "My Holiday" --seconds 3
@@ -215,13 +215,13 @@ vedit has no configuration file. All settings are command-line options.
 | `--crf` | `compress` | 28 | Quality, from 0 to 51. A lower value gives higher quality. |
 | `--width`, `--height` | `resize` | none | New size in pixels. Give at least one. |
 | `--position` | `watermark` | `bottom-right` | Place of the logo. |
-| `--width` | `watermark` | 100 | Width of the logo in pixels. |
-| `--margin` | `watermark` | 10 | Space between the logo and the edge in pixels. |
+| `--width` | `watermark` | 100 | Width of the logo in pixels. Use 1 or more. |
+| `--margin` | `watermark` | 10 | Space between the logo and the edge in pixels. Use 0 or more. |
 | `--seconds` | `title` | 3 | Length of the title card in seconds. Use a number above 0. |
 | `--size` | `title` | `1280x720` | Size of the title card. Both numbers must be even. |
 | `--fps` | `title` | 25 | Frames per second of the title card. Use 1 or more. |
-| `--bg` | `title` | `black` | Background color. Any ImageMagick color name works. |
-| `--fg` | `title` | `white` | Text color. |
+| `--bg` | `title` | `black` | Background color. Any ImageMagick color works, for example `black` or `#336699`. vedit stops with an error for an unknown color. |
+| `--fg` | `title` | `white` | Text color. The rule for an unknown color is the same as for `--bg`. |
 | `--cols` | `sheet` | 4 | Number of columns. Use 1 or more. |
 | `--rows` | `sheet` | 3 | Number of rows. Use 1 or more. |
 | `--width` | `sheet` | 320 | Largest width of each frame in pixels. vedit does not enlarge a clip. |
@@ -244,12 +244,17 @@ Without `-o`, vedit writes the output next to the input file. The name is the na
 | `sheet` | `clip_sheet.jpg` |
 | `title` | `title.mp4` in the current folder |
 
-If the output file exists, vedit stops with an error. Use `-f` to overwrite the file.
+If the output file exists, vedit stops with an error. Use `-f` to overwrite the file. vedit also stops with an error if the output file and the input file are the same file.
+
+If a run fails, or you press Ctrl+C, vedit deletes the output file that the run made. vedit does not delete an output file that existed before the run. After Ctrl+C, vedit prints `vedit: interrupted` and exits with the code 130.
 
 ## Limits
 
 * `trim` encodes the video again. The cut is exact, but the command is slower than a stream copy.
-* `join` gives every clip the size and the frame rate of the first clip. It adds black bars to keep the aspect ratio. It has no crossfade. If one clip has no sound, the output has no sound.
+* The commands that encode the video write H.264 with the pixel format `yuv420p`. These commands are `trim`, `join`, `speed`, `compress`, `rotate`, and `watermark`.
+* H.264 needs an even width and an even height. The commands that encode cut off one pixel of an odd width or an odd height.
+* `join` gives every clip the size and the average frame rate of the first clip. The size is the size that a player shows, after the turn that the metadata gives. `join` adds black bars to keep the aspect ratio. It has no crossfade. If one clip has no sound, the output has no sound.
+* `speed` accepts a factor from 0.5 to 100.
 * `title` uses the default ImageMagick font. It has no option to change the font.
 
 ## How it works
@@ -258,24 +263,27 @@ The whole program is the file `vedit.py`. It uses only the Python standard libra
 
 Each command is a function named `cmd_NAME`. The function reads the options, checks the input file, and builds a list of arguments. Two helpers run the programs:
 
-* `run_ffmpeg` runs `ffmpeg`. It stops with an error if the output file exists and `-f` is not set. It also stops if `ffmpeg` writes no file.
+* `run_ffmpeg` runs `ffmpeg`. It stops with an error if the output file exists and `-f` is not set. It also stops if the output file is the input file, or if `ffmpeg` writes no file.
 * `run_magick` runs ImageMagick 7 (`magick`) or ImageMagick 6 (`convert`, `montage`).
+* Both helpers call `run_tool`. If the program fails or you press Ctrl+C, `run_tool` deletes the output file that the run made.
 
-vedit passes the arguments as a list and never starts a shell. A file name with spaces or quotes is safe.
+vedit passes the arguments as a list and never starts a shell. A file name with spaces, quotes, or a colon is safe. vedit gives `ffmpeg` and `ffprobe` each path with the prefix `file:`, because `ffmpeg` reads the text before a colon as a protocol name.
 
 Some commands use more than one step:
 
-* `join` probes the first clip with `ffprobe`. Then it runs the `ffmpeg` concat filter with one scale and pad chain for each clip.
-* `title` draws the text into a PNG file with ImageMagick. Then `ffmpeg` loops the PNG for the chosen time and adds silent audio. vedit escapes the characters `@` and `%` in the text, because ImageMagick gives them a special meaning.
+* `join` probes the first clip with `ffprobe`. It reads the size, the turn in the metadata, and the average frame rate. Then it runs the `ffmpeg` concat filter with one scale and pad chain for each clip.
+* `title` checks the two colors with ImageMagick, because ImageMagick only prints a warning for an unknown color. Then it draws the text into a PNG file. Then `ffmpeg` loops the PNG for the chosen time and adds silent audio. vedit escapes the characters `@` and `%` in the text, because ImageMagick gives them a special meaning.
 * `sheet` finds the length of the clip with `ffprobe`. Then `ffmpeg` saves the frames in a temporary folder. Then `montage` puts the frames in a grid.
 
 ### Tests
 
-The file `test_vedit.py` makes a short clip with `ffmpeg`. It runs each command on the clip and checks the output with `ffprobe` and ImageMagick. To run the tests, use this command in the repository folder:
+The file `test_vedit.py` makes a short clip with `ffmpeg`. It runs each command on the clip and checks the output with `ffprobe` and `ffmpeg`. A test skips with a message if `ffmpeg`, `ffprobe`, or ImageMagick is missing. The tests for `title` and `sheet` need ImageMagick. To run the tests, use this command in the repository folder:
 
 ```
 python3 -m unittest
 ```
+
+A GitHub Actions workflow runs the same command on every push and pull request. The workflow file is `.github/workflows/test.yml`.
 
 ## License
 
