@@ -479,6 +479,22 @@ class VeditTest(unittest.TestCase):
             self.assertIn(f"{missing} is not installed", str(caught.exception.code))
             self.assertFalse(Path(out).exists())
 
+    @needs_imagemagick
+    def test_title_with_an_unknown_color(self):
+        # ImageMagick only prints a warning for an unknown color and exits with the code 0.
+        for option in ("--bg", "--fg"):
+            out = self.dir / f"bad{option}.mp4"
+            with self.subTest(option=option), self.assertRaises(SystemExit) as caught:
+                vedit.main(["title", "x", option, "notacolor", "--size", "320x240", "-o", str(out)])
+            self.assertIn("does not know the color: notacolor", str(caught.exception.code))
+            self.assertFalse(out.exists())
+
+    @needs_imagemagick
+    def test_title_with_a_hex_color(self):
+        out = self.dir / "hex.mp4"
+        vedit.main(["title", "x", "--bg", "#336699", "--size", "320x240", "-o", str(out)])
+        self.assertTrue(out.stat().st_size > 0)
+
     def test_join_with_one_input(self):
         out = self.dir / "one.mp4"
         vedit.main(["join", str(self.clip), "-o", str(out)])

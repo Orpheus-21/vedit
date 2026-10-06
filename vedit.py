@@ -71,16 +71,30 @@ def run_ffmpeg(args, out, force, quiet=False):
         print(f"wrote {out}")
 
 
+def magick_command(tool):
+    """Return the start of an ImageMagick command. Use ImageMagick 7 (`magick`) or 6 (`convert`, `montage`).
+    The tool is convert or montage."""
+    if shutil.which("magick"):
+        return ["magick"] + ([] if tool == "convert" else [tool])
+    if shutil.which(tool):
+        return [tool]
+    fail("ImageMagick is not installed or not in PATH")
+
+
+def check_color(value):
+    """Stop if ImageMagick does not know the color.
+    For an unknown color, ImageMagick prints a warning, uses another color, and exits with the code 0."""
+    cmd = [*magick_command("convert"), "-size", "1x1", f"xc:{value}", "null:"]
+    run = subprocess.run(cmd, capture_output=True, text=True)
+    if run.returncode != 0 or run.stderr.strip():
+        fail(f"ImageMagick does not know the color: {value}")
+
+
 def run_magick(tool, args, out, force):
-    """Run ImageMagick 7 (`magick`) or 6 (`convert`, `montage`). tool is convert or montage."""
+    """Run ImageMagick with an argument list. The tool is convert or montage."""
     if out.exists() and not force:
         fail(f"output exists: {out} (use --force to overwrite)")
-    if shutil.which("magick"):
-        cmd = ["magick"] + ([] if tool == "convert" else [tool])
-    elif shutil.which(tool):
-        cmd = [tool]
-    else:
-        fail("ImageMagick is not installed or not in PATH")
+    cmd = magick_command(tool)
     # An absolute path keeps ImageMagick from reading "a:" in "a:b.jpg" as a format name.
     run_tool([*cmd, *args, str(out.absolute())], out, "ImageMagick")
 
@@ -260,6 +274,8 @@ def cmd_title(a):
         fail("size must be WIDTHxHEIGHT with even numbers, for example 1280x720")
     w, h = int(m[1]), int(m[2])
     out = Path(a.output) if a.output else Path("title.mp4")
+    check_color(a.bg)
+    check_color(a.fg)
     # ImageMagick reads a file for text that starts with @ and expands %w style codes.
     text = a.text.replace("%", "%%")
     if text.startswith("@"):
