@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vedit"
+version = "0.1.0"
+description = "A command-line tool for simple video edits with ffmpeg and ImageMagick"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
+
+[project.urls]
+Repository = "https://github.com/Orpheus-21/vedit"
+
+[project.scripts]
+vedit = "vedit:main"
+
+[tool.setuptools]
+py-modules = ["vedit"]
