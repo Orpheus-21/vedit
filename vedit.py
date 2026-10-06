@@ -106,8 +106,8 @@ def video_duration(src):
 
 
 def video_format(src):
-    """Return the shown width, the shown height, and the frame rate (for example 25/1) of a video."""
-    entries = "stream=width,height,r_frame_rate:stream_side_data=rotation"
+    """Return the shown width, the shown height, and the average frame rate (for example 25/1) of a video."""
+    entries = "stream=width,height,r_frame_rate,avg_frame_rate:stream_side_data=rotation"
     try:
         stream = json.loads(ffprobe(src, entries, "json"))["streams"][0]
         width, height = stream["width"], stream["height"]
@@ -115,7 +115,9 @@ def video_format(src):
         for side in stream.get("side_data_list", []):
             if abs(side.get("rotation", 0)) % 180 == 90:
                 width, height = height, width
-        return width, height, stream["r_frame_rate"]
+        # The base rate can be far from the real rate in a clip with a variable frame rate.
+        fps = stream["avg_frame_rate"]
+        return width, height, stream["r_frame_rate"] if fps == "0/0" else fps
     except (ValueError, KeyError, IndexError):
         fail(f"cannot read the video stream of {src}")
 

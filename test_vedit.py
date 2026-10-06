@@ -1,11 +1,13 @@
 """Check each vedit command on a short generated clip. Run: python3 -m unittest"""
 import contextlib
 import io
+import json
 import os
 import shutil
 import subprocess
 import tempfile
 import unittest
+from fractions import Fraction
 from pathlib import Path
 from unittest import mock
 
@@ -105,6 +107,25 @@ class VeditTest(unittest.TestCase):
         vedit.main(["join", str(turned), str(self.clip), "-o", str(out)])
         self.assertEqual(self.video_size(out), "240x320")
         self.assertAlmostEqual(duration(out), 8, delta=0.3)
+
+    def test_join_uses_the_average_frame_rate(self):
+        # This clip keeps 4 of 10 frames at random times. The base rate is 25 and the average is about 10.
+        vfr = self.dir / "vfr.mp4"
+        subprocess.run(
+            ["ffmpeg", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=size=320x240:rate=25:duration=8",
+             "-vf", "select='gt(random(1),0.6)'", "-fps_mode", "vfr", "-c:v", "libx264", str(vfr)],
+            check=True,
+        )
+        self.assertTrue(8 < Fraction(vedit.video_format(vfr)[2]) < 13)
+        out = self.dir / "jv.mp4"
+        vedit.main(["join", str(vfr), str(self.clip), "-o", str(out)])
+        self.assertTrue(8 < Fraction(vedit.video_format(out)[2]) < 13)
+
+    def test_video_format_falls_back_to_the_base_frame_rate(self):
+        probe = json.dumps({"streams": [
+            {"width": 320, "height": 240, "r_frame_rate": "25/1", "avg_frame_rate": "0/0"}]})
+        with mock.patch("vedit.ffprobe", return_value=probe):
+            self.assertEqual(vedit.video_format("clip.mp4"), (320, 240, "25/1"))
 
     def test_join_with_a_clip_that_has_no_sound(self):
         silent = self.dir / "silent.mp4"
