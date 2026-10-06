@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """vedit: simple video edits with ffmpeg and ImageMagick. Needs Python 3 and ffmpeg."""
 import argparse
+import json
 import re
 import shutil
 import subprocess
@@ -76,11 +77,17 @@ def video_duration(src):
 
 
 def video_format(src):
-    """Return the width, the height, and the frame rate (for example 25/1) of a video."""
+    """Return the shown width, the shown height, and the frame rate (for example 25/1) of a video."""
+    entries = "stream=width,height,r_frame_rate:stream_side_data=rotation"
     try:
-        width, height, fps = ffprobe(src, "stream=width,height,r_frame_rate", "csv=p=0").split(",")
-        return int(width), int(height), fps
-    except ValueError:
+        stream = json.loads(ffprobe(src, entries, "json"))["streams"][0]
+        width, height = stream["width"], stream["height"]
+        # A clip with a turn of 90 or 270 degrees shows with the width and the height swapped.
+        for side in stream.get("side_data_list", []):
+            if abs(side.get("rotation", 0)) % 180 == 90:
+                width, height = height, width
+        return width, height, stream["r_frame_rate"]
+    except (ValueError, KeyError, IndexError):
         fail(f"cannot read the video stream of {src}")
 
 

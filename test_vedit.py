@@ -65,6 +65,20 @@ class VeditTest(unittest.TestCase):
         self.assertAlmostEqual(duration(out), 6, delta=0.3)
         self.assertAlmostEqual(float(vedit.ffprobe(out, "stream=duration", "csv=p=0")), 6, delta=0.3)
 
+    def test_join_clip_with_rotation_metadata(self):
+        # Phone video has a turn of 90 degrees in the metadata. This needs ffmpeg 6.0 or later.
+        turned = self.dir / "turned.mp4"
+        subprocess.run(
+            ["ffmpeg", "-loglevel", "error", "-display_rotation", "90", "-i", str(self.clip),
+             "-c", "copy", str(turned)],
+            check=True,
+        )
+        self.assertEqual(vedit.video_format(turned)[:2], (240, 320))
+        out = self.dir / "jr.mp4"
+        vedit.main(["join", str(turned), str(self.clip), "-o", str(out)])
+        self.assertEqual(self.video_size(out), "240x320")
+        self.assertAlmostEqual(duration(out), 8, delta=0.3)
+
     def test_join_with_a_clip_that_has_no_sound(self):
         silent = self.dir / "silent.mp4"
         vedit.main(["mute", str(self.clip), "-o", str(silent)])
