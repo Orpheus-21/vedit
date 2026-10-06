@@ -183,6 +183,25 @@ Takes one frame from the middle of each equal part of the clip. Then it puts the
 python3 vedit.py sheet clip.mp4 --cols 4 --rows 3
 ```
 
+## Batch use
+
+vedit works on one file for each run. To change many files, use a loop of the shell.
+
+This example compresses each `.mp4` file in the current folder. It saves the results in the folder `small`:
+
+```
+mkdir small
+for f in *.mp4; do python3 vedit.py compress "$f" -o "small/$f"; done
+```
+
+The loop does not read the folder `small`, so you can run it again. If a result file exists, vedit stops with an error for that file. The loop then goes on with the next file. Add `-f` to overwrite the results of an earlier run:
+
+```
+for f in *.mp4; do python3 vedit.py -f compress "$f" -o "small/$f"; done
+```
+
+Save the results in another folder. Without `-o`, vedit writes `clip_small.mp4` next to `clip.mp4`. The next run of the loop then also compresses `clip_small.mp4`.
+
 ## Configuration
 
 vedit has no configuration file. All settings are command-line options.
