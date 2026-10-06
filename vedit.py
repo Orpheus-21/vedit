@@ -162,7 +162,7 @@ def cmd_gif(a):
     src = check_input(a.input)
     out = Path(a.output) if a.output else default_out(src, "gif", ".gif")
     graph = (
-        f"fps={a.fps},scale={a.width}:-1:flags=lanczos,"
+        f"fps={a.fps},scale='min({a.width},iw)':-1:flags=lanczos,"
         "split[a][b];[a]palettegen[p];[b][p]paletteuse"
     )
     run_ffmpeg(["-i", ff(src), "-vf", graph, "-loop", "0"], out, a.force)
@@ -285,7 +285,7 @@ def cmd_sheet(a):
         # Take one frame from the middle of each equal part of the clip.
         run_ffmpeg(
             ["-ss", str(length / (2 * count)), "-i", ff(src),
-             "-vf", f"fps={count}/{length},scale={a.width}:-1", "-frames:v", str(count)],
+             "-vf", f"fps={count}/{length},scale='min({a.width},iw)':-1", "-frames:v", str(count)],
             Path(tmp) / "%03d.png", True, quiet=True,
         )
         frames = sorted(Path(tmp).glob("*.png"))
@@ -327,7 +327,7 @@ def build_parser():
     sp = add("gif", cmd_gif, "make a GIF from a clip")
     sp.add_argument("input")
     sp.add_argument("--fps", type=int, default=12)
-    sp.add_argument("--width", type=int, default=480, help="width in pixels")
+    sp.add_argument("--width", type=int, default=480, help="largest width in pixels, vedit does not enlarge a clip")
 
     sp = add("compress", cmd_compress, "make the file smaller (H.264)")
     sp.add_argument("input")
@@ -345,7 +345,7 @@ def build_parser():
     sp.add_argument("input")
     sp.add_argument("--cols", type=int, default=4)
     sp.add_argument("--rows", type=int, default=3)
-    sp.add_argument("--width", type=int, default=320, help="width of each frame in pixels")
+    sp.add_argument("--width", type=int, default=320, help="largest width of each frame in pixels, vedit does not enlarge a clip")
 
     sp = add("audio", cmd_audio, "save the sound of a clip as an audio file")
     sp.add_argument("input")

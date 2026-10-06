@@ -113,6 +113,20 @@ class VeditTest(unittest.TestCase):
         vedit.main(["gif", str(self.clip), "-o", str(out)])
         self.assertTrue(out.stat().st_size > 0)
 
+    def test_gif_and_sheet_do_not_enlarge_a_small_clip(self):
+        # The clip is 320 pixels wide. The default GIF width is 480.
+        gif = self.dir / "small.gif"
+        vedit.main(["gif", str(self.clip), "-o", str(gif)])
+        self.assertEqual(self.video_size(gif), "320x240")
+        narrow = self.dir / "narrow.gif"
+        vedit.main(["gif", str(self.clip), "--width", "100", "-o", str(narrow)])
+        self.assertEqual(self.video_size(narrow), "100x75")
+        sheet = self.dir / "wide_sheet.png"
+        vedit.main(["sheet", str(self.clip), "--cols", "2", "--rows", "1", "--width", "500",
+                    "-o", str(sheet)])
+        # Each frame is 320x240 plus 4 pixels of border on every side.
+        self.assertEqual(self.video_size(sheet), "656x248")
+
     def test_compress(self):
         out = self.dir / "c.mp4"
         vedit.main(["compress", str(self.clip), "-o", str(out)])
