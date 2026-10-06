@@ -75,6 +75,26 @@ class VeditTest(unittest.TestCase):
         vedit.main(["trim", str(sparse), "3", "-o", str(to_end)])
         self.assertAlmostEqual(duration(to_end), 1, delta=0.1)
 
+    def test_trim_without_an_end_time_goes_to_the_end(self):
+        out = self.dir / "te2.mp4"
+        vedit.main(["trim", str(self.clip), "1", "-o", str(out)])
+        self.assertAlmostEqual(duration(out), 3, delta=0.2)
+
+    def test_speed_factor_out_of_range(self):
+        for factor in ("0.25", "101"):
+            with self.subTest(factor=factor), self.assertRaises(SystemExit) as caught:
+                vedit.main(["speed", str(self.clip), factor, "-o", str(self.dir / "never.mp4")])
+            self.assertIn("from 0.5 to 100", str(caught.exception.code))
+            self.assertFalse((self.dir / "never.mp4").exists())
+
+    def test_speed_on_a_clip_with_no_sound(self):
+        silent = self.dir / "quiet.mp4"
+        vedit.main(["mute", str(self.clip), "-o", str(silent)])
+        out = self.dir / "qs.mp4"
+        vedit.main(["speed", str(silent), "2", "-o", str(out)])
+        self.assertEqual(streams(out), ["video"])
+        self.assertAlmostEqual(duration(out), 2, delta=0.3)
+
     def test_join(self):
         out = self.dir / "j.mp4"
         vedit.main(["join", str(self.clip), str(self.clip), "-o", str(out)])
