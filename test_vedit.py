@@ -460,6 +460,30 @@ class VeditTest(unittest.TestCase):
                 vedit.main(args)
                 self.assertTrue(Path(name).stat().st_size > 0)
 
+    def test_a_missing_tool_gives_a_clear_error(self):
+        out = str(self.dir / "never.mp4")
+        for missing, args in [
+            ("ffmpeg", ["mute", str(self.clip), "-o", out]),
+            ("ffprobe", ["join", str(self.clip), str(self.clip), "-o", out]),
+            ("ImageMagick", ["title", "x", "-o", out]),
+        ]:
+            hidden = {"ffmpeg", "ffprobe"} if missing == "ImageMagick" else {missing}
+            hidden = {"magick", "convert", "montage"} if missing == "ImageMagick" else hidden
+
+            def which(name, hidden=hidden):
+                return None if name in hidden else "/usr/bin/" + name
+
+            with self.subTest(missing=missing), mock.patch("vedit.shutil.which", side_effect=which), \
+                    self.assertRaises(SystemExit) as caught:
+                vedit.main(args)
+            self.assertIn(f"{missing} is not installed", str(caught.exception.code))
+            self.assertFalse(Path(out).exists())
+
+    def test_join_with_one_input(self):
+        out = self.dir / "one.mp4"
+        vedit.main(["join", str(self.clip), "-o", str(out)])
+        self.assertAlmostEqual(duration(out), 4, delta=0.2)
+
     def test_no_overwrite_without_force(self):
         out = self.dir / "o.mp4"
         out.write_text("x")
