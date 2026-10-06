@@ -228,6 +228,35 @@ class VeditTest(unittest.TestCase):
                 vedit.main([*args, "-o", str(out)])
                 self.assertEqual(self.video_size(out), size)
 
+    def test_commands_that_encode_write_yuv420p(self):
+        # A yuv444p clip makes libx264 write the profile High 4:4:4, which many players cannot play.
+        wide = self.dir / "wide.mp4"
+        subprocess.run(
+            ["ffmpeg", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=size=320x240:rate=25:duration=2",
+             "-f", "lavfi", "-i", "sine=duration=2", "-pix_fmt", "yuv444p", "-c:v", "libx264",
+             "-shortest", str(wide)],
+            check=True,
+        )
+        logo = self.dir / "logo_wide.png"
+        subprocess.run(
+            ["ffmpeg", "-loglevel", "error", "-f", "lavfi", "-i", "color=red:s=40x40",
+             "-frames:v", "1", str(logo)],
+            check=True,
+        )
+        cases = {
+            "trim": ["trim", str(wide), "0", "1"],
+            "speed": ["speed", str(wide), "2"],
+            "rotate": ["rotate", str(wide), "90"],
+            "compress": ["compress", str(wide)],
+            "watermark": ["watermark", str(wide), str(logo)],
+            "join": ["join", str(wide), str(wide)],
+        }
+        for name, args in cases.items():
+            with self.subTest(command=name):
+                out = self.dir / f"wide_{name}.mp4"
+                vedit.main([*args, "-o", str(out)])
+                self.assertEqual(vedit.ffprobe(out, "stream=pix_fmt", "csv=p=0"), "yuv420p")
+
     # The encoder libx264 cannot write a clip with an odd size. ffmpeg fails after it opens the output.
     FAILING_ARGS = ["-vf", "scale=321:241", "-c:v", "libx264", "-pix_fmt", "yuv420p"]
 
