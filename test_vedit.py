@@ -528,6 +528,22 @@ class VeditTest(unittest.TestCase):
         vedit.main(["join", str(self.clip), "-o", str(out)])
         self.assertAlmostEqual(duration(out), 4, delta=0.2)
 
+    def test_progress_lines_only_in_a_terminal(self):
+        class Stream(io.StringIO):
+            def __init__(self, tty):
+                super().__init__()
+                self.tty = tty
+
+            def isatty(self):
+                return self.tty
+
+        for tty in (True, False):
+            with self.subTest(tty=tty), \
+                    mock.patch("vedit.subprocess.run", return_value=mock.Mock(returncode=0)) as run, \
+                    mock.patch("vedit.sys.stderr", Stream(tty)):
+                vedit.run_ffmpeg(["-i", str(self.clip)], self.dir / "x.mp4", False, pattern=True)
+            self.assertEqual("-stats" in run.call_args[0][0], tty)
+
     def test_no_overwrite_without_force(self):
         out = self.dir / "o.mp4"
         out.write_text("x")

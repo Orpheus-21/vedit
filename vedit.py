@@ -71,7 +71,9 @@ def run_ffmpeg(args, out, force, pattern=False):
     if any(Path(i).resolve() == out.resolve() for i in inputs):
         fail(f"the output and the input are the same file: {out}")
     check_output(out, force)
-    run_tool(["ffmpeg", "-hide_banner", "-loglevel", "error", "-stats", "-y", *args, ff(out)],
+    # The progress lines use carriage returns. They are hard to read in a log file or a pipe.
+    stats = ["-stats"] if sys.stderr.isatty() else []
+    run_tool(["ffmpeg", "-hide_banner", "-loglevel", "error", *stats, "-y", *args, ff(out)],
              out, "ffmpeg")
     if not pattern:
         # ffmpeg can exit with code 0 and write nothing, for example for a time after the end.
