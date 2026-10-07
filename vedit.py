@@ -251,12 +251,12 @@ def cmd_rotate(a):
     run_ffmpeg(["-i", ff(src), "-vf", f"{ROTATE_FILTERS[a.degrees]},{EVEN}", *PIX_FMT, "-c:a", "copy"], out, a.force)
 
 
-# ffmpeg overlay positions. W and H are the video size, w and h the logo size, M the margin.
+# ffmpeg overlay positions. W and H are the video size, w and h the logo size, {m} the margin.
 POSITIONS = {
-    "top-left": "M:M",
-    "top-right": "W-w-M:M",
-    "bottom-left": "M:H-h-M",
-    "bottom-right": "W-w-M:H-h-M",
+    "top-left": "{m}:{m}",
+    "top-right": "W-w-{m}:{m}",
+    "bottom-left": "{m}:H-h-{m}",
+    "bottom-right": "W-w-{m}:H-h-{m}",
     "center": "(W-w)/2:(H-h)/2",
 }
 
@@ -267,7 +267,7 @@ def cmd_watermark(a):
     src = check_input(a.input)
     logo = check_input(a.image)
     out = resolve_out(a, src, "mark")
-    pos = POSITIONS[a.position].replace("M", str(a.margin))
+    pos = POSITIONS[a.position].format(m=a.margin)
     graph = f"[0:v]{EVEN}[base];[1:v]scale={a.width}:-1[wm];[base][wm]overlay={pos}[v]"
     run_ffmpeg(
         ["-i", ff(src), "-i", ff(logo), "-filter_complex", graph,
