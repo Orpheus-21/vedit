@@ -551,6 +551,13 @@ class VeditTest(unittest.TestCase):
                 vedit.run_ffmpeg(["-i", str(self.clip)], self.dir / "x.mp4", False, pattern=True)
             self.assertEqual("-stats" in run.call_args[0][0], tty)
 
+    def test_help_text_names_imagemagick(self):
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout), self.assertRaises(SystemExit) as caught:
+            vedit.main(["--help"])
+        self.assertEqual(caught.exception.code, 0)
+        self.assertIn("ImageMagick", stdout.getvalue())
+
     def test_no_overwrite_without_force(self):
         out = self.dir / "o.mp4"
         out.write_text("x")

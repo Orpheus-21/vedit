@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""vedit: simple video edits with ffmpeg and ImageMagick. Needs Python 3 and ffmpeg."""
+"""vedit: simple video edits with ffmpeg and ImageMagick.
+Needs Python 3 and ffmpeg. The commands title and sheet also need ImageMagick."""
 import argparse
 import json
 import re
@@ -358,7 +359,7 @@ def crf_value(text):
 
 
 def build_parser():
-    p = argparse.ArgumentParser(prog="vedit", description="Simple video edits with ffmpeg.")
+    p = argparse.ArgumentParser(prog="vedit", description="Simple video edits with ffmpeg and ImageMagick.")
     p.add_argument("-f", "--force", action="store_true", help="overwrite the output file")
     sub = p.add_subparsers(dest="command", required=True)
 
