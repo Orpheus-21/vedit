@@ -300,6 +300,13 @@ def cmd_crop(a):
                out, a.force)
 
 
+def cmd_reverse(a):
+    src = check_input(a.input)
+    out = resolve_out(a, src, "reverse")
+    # The filters reverse and areverse hold the whole clip in memory. Use them for short clips.
+    run_ffmpeg(["-i", ff(src), "-vf", f"reverse,{EVEN}", *PIX_FMT, "-af", "areverse"], out, a.force)
+
+
 def cmd_audio(a):
     src = check_input(a.input)
     out = resolve_out(a, src, "audio", ".mp3")
@@ -579,6 +586,10 @@ def build_parser():
     sp.add_argument("height", type=positive_int, help="height of the cut in pixels, an even number")
     sp.add_argument("--x", type=non_negative_int, help="left edge of the cut in pixels, the center if you give none")
     sp.add_argument("--y", type=non_negative_int, help="top edge of the cut in pixels, the center if you give none")
+
+    sp = add("reverse", cmd_reverse, "play a clip backward, use it for short clips only",
+             "vedit reverse clip.mp4")
+    sp.add_argument("input", help="the video file")
 
     sp = add("fade", cmd_fade, "fade a clip in from black, or out to black, with the sound",
              "vedit fade clip.mp4 --fade-in 1 --fade-out 2")

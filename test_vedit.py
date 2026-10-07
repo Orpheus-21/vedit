@@ -420,6 +420,28 @@ class VeditTest(unittest.TestCase):
             self.assertTrue("outside the video" in str(caught.exception.code)
                             or "even numbers" in str(caught.exception.code))
 
+    def small_frame(self, video, seek):
+        """Return a frame as 64x48 gray pixels. The seek is a list of ffmpeg options."""
+        return subprocess.run(
+            ["ffmpeg", "-loglevel", "error", *seek, "-i", str(video), "-frames:v", "1",
+             "-vf", "scale=64:48,format=gray", "-f", "rawvideo", "-"], capture_output=True, check=True).stdout
+
+    def difference(self, first, second):
+        return sum(abs(one - two) for one, two in zip(first, second)) / len(first)
+
+    def test_reverse(self):
+        out = self.dir / "backward.mp4"
+        vedit.main(["reverse", str(self.clip), "-o", str(out)])
+        self.assertAlmostEqual(duration(out), 4, delta=0.3)
+        self.assertEqual(streams(out), ["video", "audio"])
+        first_of_input = self.small_frame(self.clip, ["-ss", "0"])
+        last_of_input = self.small_frame(self.clip, ["-ss", "3.96"])
+        first_of_output = self.small_frame(out, ["-ss", "0"])
+        # The first frame of the output is the last frame of the input.
+        self.assertLess(self.difference(first_of_output, last_of_input),
+                        self.difference(first_of_output, first_of_input))
+        self.assertGreater(self.difference(first_of_input, last_of_input), 1)
+
     def test_fade_in_and_out(self):
         out = self.dir / "faded.mp4"
         vedit.main(["fade", str(self.clip), "--fade-in", "1", "--fade-out", "1", "-o", str(out)])
@@ -675,6 +697,7 @@ class VeditTest(unittest.TestCase):
             (["rotate", "clip.mp4", "90"], "clip_rot90.mp4"),
             (["watermark", "clip.mp4", "logo.png"], "clip_mark.mp4"),
             (["fade", "clip.mp4", "--fade-in", "1"], "clip_fade.mp4"),
+            (["reverse", "clip.mp4"], "clip_reverse.mp4"),
             (["crop", "clip.mp4", "160", "120"], "clip_crop.mp4"),
             (["volume", "clip.mp4", "2"], "clip_volume.mp4"),
             (["normalize", "clip.mp4"], "clip_norm.mp4"),
