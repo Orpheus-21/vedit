@@ -398,6 +398,28 @@ class VeditTest(unittest.TestCase):
             ["ffmpeg", "-loglevel", "error", *seek, "-i", str(video), "-frames:v", "1", "-vf", "format=gray",
              "-f", "rawvideo", "-"], capture_output=True, check=True).stdout)
 
+    def assertColorsClose(self, first, second, delta=30):
+        for one, two in zip(first, second):
+            self.assertAlmostEqual(one, two, delta=delta)
+
+    def test_crop_in_the_center_and_at_a_place(self):
+        center = self.dir / "crop_center.mp4"
+        vedit.main(["crop", str(self.clip), "160", "120", "-o", str(center)])
+        self.assertEqual(video_size(center), "160x120")
+        # The cut starts at x = 80 and y = 60 in the picture of 320x240.
+        self.assertColorsClose(self.pixel(center, 4, 4), self.pixel(self.clip, 84, 64))
+        corner = self.dir / "crop_corner.mp4"
+        vedit.main(["crop", str(self.clip), "160", "120", "--x", "100", "--y", "20", "-o", str(corner)])
+        self.assertColorsClose(self.pixel(corner, 4, 4), self.pixel(self.clip, 104, 24))
+        self.assertEqual(streams(corner), ["video", "audio"])
+
+    def test_crop_must_fit_in_the_video(self):
+        for args in (["400", "100"], ["160", "120", "--x", "200"], ["161", "100"]):
+            with self.subTest(args=args), self.assertRaises(SystemExit) as caught:
+                vedit.main(["crop", str(self.clip), *args, "-o", str(self.dir / "never_crop.mp4")])
+            self.assertTrue("outside the video" in str(caught.exception.code)
+                            or "even numbers" in str(caught.exception.code))
+
     def test_fade_in_and_out(self):
         out = self.dir / "faded.mp4"
         vedit.main(["fade", str(self.clip), "--fade-in", "1", "--fade-out", "1", "-o", str(out)])
@@ -653,6 +675,7 @@ class VeditTest(unittest.TestCase):
             (["rotate", "clip.mp4", "90"], "clip_rot90.mp4"),
             (["watermark", "clip.mp4", "logo.png"], "clip_mark.mp4"),
             (["fade", "clip.mp4", "--fade-in", "1"], "clip_fade.mp4"),
+            (["crop", "clip.mp4", "160", "120"], "clip_crop.mp4"),
             (["volume", "clip.mp4", "2"], "clip_volume.mp4"),
             (["normalize", "clip.mp4"], "clip_norm.mp4"),
             (["audio", "clip.mp4"], "clip_audio.mp3"),

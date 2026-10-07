@@ -285,6 +285,21 @@ def cmd_fade(a):
     run_ffmpeg(args, out, a.force)
 
 
+def cmd_crop(a):
+    if a.width % 2 or a.height % 2:
+        fail("width and height must be even numbers")
+    src = check_input(a.input)
+    out = resolve_out(a, src, "crop")
+    full_width, full_height, _ = video_format(src)
+    # Without --x and --y, the cut is in the center of the picture.
+    x = (full_width - a.width) // 2 if a.x is None else a.x
+    y = (full_height - a.height) // 2 if a.y is None else a.y
+    if x + a.width > full_width or y + a.height > full_height:
+        fail(f"the cut of {a.width}x{a.height} at {x},{y} is outside the video of {full_width}x{full_height}")
+    run_ffmpeg(["-i", ff(src), "-vf", f"crop={a.width}:{a.height}:{x}:{y}", *PIX_FMT, "-c:a", "copy"],
+               out, a.force)
+
+
 def cmd_audio(a):
     src = check_input(a.input)
     out = resolve_out(a, src, "audio", ".mp3")
@@ -442,6 +457,14 @@ def positive_int(text):
     return value
 
 
+def non_negative_int(text):
+    """An argparse type for a whole number of 0 or more."""
+    value = int(text)
+    if value < 0:
+        raise argparse.ArgumentTypeError("must be 0 or more")
+    return value
+
+
 def positive_number(text):
     """An argparse type for a number above 0."""
     value = float(text)
@@ -549,6 +572,13 @@ def build_parser():
     sp.add_argument("--margin", type=int, default=10, help="space to the edge in pixels")
     sp.add_argument("--opacity", type=fraction, default=1,
                     help="how solid the logo is, above 0 and at most 1, 1 is solid")
+
+    sp = add("crop", cmd_crop, "cut away the edges of the picture", "vedit crop clip.mp4 640 360 --x 0 --y 0")
+    sp.add_argument("input", help="the video file")
+    sp.add_argument("width", type=positive_int, help="width of the cut in pixels, an even number")
+    sp.add_argument("height", type=positive_int, help="height of the cut in pixels, an even number")
+    sp.add_argument("--x", type=non_negative_int, help="left edge of the cut in pixels, the center if you give none")
+    sp.add_argument("--y", type=non_negative_int, help="top edge of the cut in pixels, the center if you give none")
 
     sp = add("fade", cmd_fade, "fade a clip in from black, or out to black, with the sound",
              "vedit fade clip.mp4 --fade-in 1 --fade-out 2")
