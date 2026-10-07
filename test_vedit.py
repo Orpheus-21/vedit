@@ -405,14 +405,14 @@ class VeditTest(unittest.TestCase):
         self.assertEqual(streams(out), ["video", "audio"])
         self.assertLess(self.brightest(out, ["-ss", "0"]), 30)          # the first frame is black
         self.assertGreater(self.brightest(out, ["-ss", "2"]), 200)      # the middle is not
-        self.assertLess(self.brightest(out, ["-sseof", "-0.05"]), 30)   # the last frame is black
+        self.assertLess(self.brightest(out, ["-ss", "3.96"]), 30)   # the last frame is black
         self.assertGreater(self.brightest(self.clip, ["-ss", "0"]), 200)
 
     def test_fade_in_only_keeps_the_end(self):
         out = self.dir / "fade_in.mp4"
         vedit.main(["fade", str(self.clip), "--fade-in", "1", "-o", str(out)])
         self.assertLess(self.brightest(out, ["-ss", "0"]), 30)
-        self.assertGreater(self.brightest(out, ["-sseof", "-0.05"]), 200)
+        self.assertGreater(self.brightest(out, ["-ss", "3.96"]), 200)
 
     def test_fade_needs_a_fade_that_fits(self):
         for args in (["--fade-in", "3", "--fade-out", "3"], []):
