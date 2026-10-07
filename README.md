@@ -17,6 +17,7 @@ Each vedit command runs one `ffmpeg` or ImageMagick job. You give the command a 
 | `rotate` | Turns a clip 90, 180, or 270 degrees clockwise. |
 | `watermark` | Puts a logo on a clip. |
 | `crop` | Cuts away the edges of the picture. |
+| `text` | Writes text on a clip, for the whole clip or for a time. |
 | `subtitles` | Burns subtitles from an `.srt` file into the picture. |
 | `loop` | Plays a clip again and again, the number of times you give. |
 | `reverse` | Plays a clip backward. |
@@ -32,7 +33,7 @@ Each vedit command runs one `ffmpeg` or ImageMagick job. You give the command a 
 ## Requirements
 
 * Python 3.9 or later. The tests pass on Python 3.9, 3.10, 3.11, 3.12, 3.13, and 3.14. The tests also pass on Python 3.8, and `python3 vedit.py` runs there. The install as a command needs Python 3.9, because the build needs `setuptools` 77. I could not test Python 3.7.
-* `ffmpeg` and `ffprobe`. The `ffmpeg` build must include the encoders `libx264`, `aac`, and `libmp3lame`. The command `subtitles` also needs the filter `subtitles`. The tests ran on `ffmpeg` 9.0.1 and on `ffmpeg` 6.1.
+* `ffmpeg` and `ffprobe`. The `ffmpeg` build must include the encoders `libx264`, `aac`, and `libmp3lame`. The command `subtitles` needs the filter `subtitles`. The command `text` needs the filter `drawtext`. The tests ran on `ffmpeg` 9.0.1 and on `ffmpeg` 6.1.
 * ImageMagick. The commands `title` and `sheet` need it. The other commands do not. The tests ran on ImageMagick 7.1.2 and on ImageMagick 6.9. If the command `magick` is missing, vedit uses the ImageMagick 6 commands `convert` and `montage`.
 * Linux. The tests ran on Linux. I do not know if vedit works on other systems.
 
@@ -188,6 +189,14 @@ python3 vedit.py crop clip.mp4 640 360
 python3 vedit.py crop clip.mp4 640 360 --x 0 --y 0
 ```
 
+### text
+
+Writes a text on the picture. `--position` is `top-left`, `top-center`, `top-right`, `center`, `bottom-left`, `bottom-center`, or `bottom-right`. `--from` and `--to` set the times in seconds when the text shows. The command needs an `ffmpeg` build with the filter `drawtext`. The text uses the default font of `ffmpeg`.
+
+```
+python3 vedit.py text clip.mp4 "Hello" --position top-left --from 1 --to 3
+```
+
 ### subtitles
 
 Draws the text of an `.srt` file into the picture. The command needs an `ffmpeg` build with the filter `subtitles`, which uses the library `libass`. The text has the default style and the default font of `libass`.
@@ -322,6 +331,11 @@ vedit has no configuration file. All settings are command-line options.
 | `--y` | `crop` | the center | Top edge of the part to keep, in pixels. Use 0 or more. |
 | `--fade-in` | `fade` | none | Length of the fade in from black, in seconds. Use a number above 0. |
 | `--fade-out` | `fade` | none | Length of the fade out to black, in seconds. Use a number above 0. |
+| `--position` | `text` | `bottom-center` | Place of the text. |
+| `--size` | `text` | 36 | Height of the letters in pixels. |
+| `--color` | `text` | `white` | Color of the text. Use an `ffmpeg` color name or `0xRRGGBB`. This is not an ImageMagick color. |
+| `--from` | `text` | the start | Time in seconds when the text appears. Use 0 or more. |
+| `--to` | `text` | the end | Time in seconds when the text goes away. Use 0 or more. |
 | `--seconds` | `title` | 3 | Length of the title card in seconds. Use a number above 0. |
 | `--size` | `title` | `1280x720` | Size of the title card. Both numbers must be even. |
 | `--fps` | `title` | 25 | Frames per second of the title card. Use 1 or more. |
@@ -345,6 +359,7 @@ Without `-o`, vedit writes the output next to the input file. The name is the na
 | `rotate` | `clip_rot90.mp4` (the tag holds the degrees) |
 | `watermark` | `clip_mark.mp4` |
 | `crop` | `clip_crop.mp4` |
+| `text` | `clip_text.mp4` |
 | `subtitles` | `clip_subs.mp4` |
 | `loop` | `clip_loop.mp4` |
 | `reverse` | `clip_reverse.mp4` |
