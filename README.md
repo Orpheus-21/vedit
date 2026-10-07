@@ -252,6 +252,12 @@ The extension of the output file selects the audio format, for example `.mp3`, `
 python3 vedit.py audio clip.mp4 -o sound.wav
 ```
 
+Use `--bitrate` to set the bits per second of the sound, for example `128k`. The bitrate applies to `.mp3` and `.m4a` files, and the default is `192k`. The other formats do not use a bitrate. The encoder aims at the bitrate, so the real value can differ a little.
+
+```
+python3 vedit.py audio clip.mp4 -o sound.mp3 --bitrate 128k
+```
+
 ### mute
 
 ```
@@ -350,6 +356,7 @@ vedit has no configuration file. All settings are command-line options.
 | `--crf` | `compress` | 28 | Quality, from 0 to 51. A lower value gives higher quality. |
 | `--preset` | `compress` | `medium` | Speed of the encoder. A slower preset gives a smaller file. |
 | `--max-height` | `compress` | none | Largest height in pixels. Use 1 or more. vedit does not enlarge a clip. |
+| `--bitrate` | `audio` | `192k` for `.mp3` and `.m4a` | Bits per second of the sound, for example `128k`. The other formats ignore it. |
 | `--width`, `--height` | `resize` | none | New size in pixels. Give at least one. |
 | `--position` | `watermark` | `bottom-right` | Place of the logo. |
 | `--width` | `watermark` | 100 | Width of the logo in pixels. Use 1 or more. You cannot use it with `--scale`. |
