@@ -96,6 +96,12 @@ Cuts from a start time to an end time. If you give no end time, the cut goes to 
 python3 vedit.py trim clip.mp4 10 25
 ```
 
+Add `--fast` to copy the streams and not encode them. This is much faster. The cut then starts at the keyframe before the start time, so it is not exact.
+
+```
+python3 vedit.py trim clip.mp4 10 25 --fast
+```
+
 ### join
 
 Joins two or more clips in the order you give them.
@@ -213,6 +219,7 @@ vedit has no configuration file. All settings are command-line options.
 | `-o`, `--output` | all | see below | The path of the output file. |
 | `-f`, `--force` | all | off | Overwrites an output file that exists. You can write it before or after the command name. |
 | `--dry-run` | all | off | Prints each `ffmpeg` and ImageMagick command and does not run it. You can write it before or after the command name. |
+| `--fast` | `trim` | off | Copies the streams and does not encode. The cut starts at the keyframe before the start time. |
 | `--fps` | `gif` | 12 | Frames per second of the GIF. Use 1 or more. |
 | `--width` | `gif` | 480 | Largest width of the GIF in pixels. vedit does not enlarge a clip. |
 | `--crf` | `compress` | 28 | Quality, from 0 to 51. A lower value gives higher quality. |
@@ -253,7 +260,7 @@ If a run fails, or you press Ctrl+C, vedit deletes the output file that the run 
 
 ## Limits
 
-* `trim` encodes the video again. The cut is exact, but the command is slower than a stream copy.
+* `trim` encodes the video again. The cut is exact, but the command is slower than a stream copy. Use `--fast` for a stream copy.
 * The commands that encode the video write H.264 with the pixel format `yuv420p`. These commands are `trim`, `join`, `speed`, `compress`, `rotate`, and `watermark`.
 * H.264 needs an even width and an even height. The commands that encode cut off one pixel of an odd width or an odd height.
 * `join` gives every clip the size and the average frame rate of the first clip. The size is the size that a player shows, after the turn that the metadata gives. `join` adds black bars to keep the aspect ratio. It has no crossfade. If one clip has no sound, the output has no sound.
