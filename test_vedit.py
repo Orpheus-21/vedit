@@ -262,6 +262,22 @@ class VeditTest(unittest.TestCase):
         self.assertTrue(self.is_red(bottom, 290, 210))
         self.assertFalse(self.is_red(bottom, 20, 20))
 
+    def test_watermark_positions(self):
+        # The clip is 320x240, the logo is 40x40, and the margin is 10.
+        logo = self.make_logo("logo_pos.png")
+        for position, (x, y) in {
+            "top-left": (30, 30),
+            "top-right": (290, 30),
+            "bottom-left": (30, 210),
+            "bottom-right": (290, 210),
+            "center": (160, 120),
+        }.items():
+            with self.subTest(position=position):
+                out = self.dir / f"pos_{position}.mp4"
+                vedit.main(["watermark", str(self.clip), str(logo), "--width", "40",
+                            "--position", position, "-o", str(out)])
+                self.assertTrue(self.is_red(out, x, y))
+
     @needs_imagemagick
     def test_title_joins_with_clip(self):
         card = self.dir / "card.mp4"
