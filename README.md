@@ -160,6 +160,12 @@ The `--position` value is `top-left`, `top-right`, `bottom-left`, `bottom-right`
 python3 vedit.py watermark clip.mp4 logo.png --position bottom-right --width 100
 ```
 
+Use `--opacity` to make the logo transparent. The value 1 is solid. The value 0.5 is half transparent.
+
+```
+python3 vedit.py watermark clip.mp4 logo.png --opacity 0.5
+```
+
 ### audio
 
 The extension of the output file selects the audio format, for example `.mp3`, `.wav`, `.m4a`, or `.flac`.
@@ -240,6 +246,7 @@ vedit has no configuration file. All settings are command-line options.
 | `--position` | `watermark` | `bottom-right` | Place of the logo. |
 | `--width` | `watermark` | 100 | Width of the logo in pixels. Use 1 or more. |
 | `--margin` | `watermark` | 10 | Space between the logo and the edge in pixels. Use 0 or more. |
+| `--opacity` | `watermark` | 1 | How solid the logo is. Use a number above 0 and at most 1. |
 | `--seconds` | `title` | 3 | Length of the title card in seconds. Use a number above 0. |
 | `--size` | `title` | `1280x720` | Size of the title card. Both numbers must be even. |
 | `--fps` | `title` | 25 | Frames per second of the title card. Use 1 or more. |
