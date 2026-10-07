@@ -41,6 +41,17 @@ def loudness(path):
     return ffmpeg_report(path, "ebur128=framelog=quiet", r"I:\s+(-?[\d.]+) LUFS")
 
 
+def ffmpeg_has_filter(name):
+    if not shutil.which("ffmpeg"):
+        return False
+    filters = subprocess.run(["ffmpeg", "-hide_banner", "-filters"], capture_output=True, text=True).stdout
+    return bool(re.search(rf"\s{name}\s", filters))
+
+
+needs_drawtext = unittest.skipUnless(ffmpeg_has_filter("drawtext"), "ffmpeg has no drawtext filter")
+needs_subtitles = unittest.skipUnless(ffmpeg_has_filter("subtitles"), "ffmpeg has no subtitles filter")
+
+
 def probe(path, entries, fmt="csv=p=0", select=None):
     """Return the text that ffprobe prints for the entries of a file."""
     cmd = ["ffprobe", "-v", "error"]
@@ -420,20 +431,19 @@ class VeditTest(unittest.TestCase):
             self.assertTrue("outside the video" in str(caught.exception.code)
                             or "even numbers" in str(caught.exception.code))
 
-    def small_frame(self, video, seek):
-        """Return a frame as 64x48 gray pixels. The seek is a list of ffmpeg options."""
+    def small_frame(self, video, seek, crop=None):
+        """Return a frame as 64x48 gray pixels. The seek is a list of ffmpeg options.
+        The crop is an ffmpeg crop value, WIDTH:HEIGHT:X:Y, for a part of the picture."""
+        part = f"crop={crop}," if crop else ""
         return subprocess.run(
             ["ffmpeg", "-loglevel", "error", *seek, "-i", str(video), "-frames:v", "1",
-             "-vf", "scale=64:48,format=gray", "-f", "rawvideo", "-"], capture_output=True, check=True).stdout
+             "-vf", f"{part}scale=64:48,format=gray", "-f", "rawvideo", "-"],
+            capture_output=True, check=True).stdout
 
     def difference(self, first, second):
         return sum(abs(one - two) for one, two in zip(first, second)) / len(first)
 
-    @unittest.skipUnless(
-        shutil.which("ffmpeg") and re.search(
-            r"\ssubtitles\s", subprocess.run(["ffmpeg", "-hide_banner", "-filters"],
-                                               capture_output=True, text=True).stdout),
-        "ffmpeg has no subtitles filter")
+    @needs_subtitles
     def test_subtitles(self):
         srt = self.dir / "my 'subs'.srt"
         srt.write_text("1\n00:00:01,000 --> 00:00:03,000\nHELLO SUBTITLES\n")
@@ -452,6 +462,32 @@ class VeditTest(unittest.TestCase):
             vedit.require_filter("subtitles", "libass")
         self.assertIn("no subtitles filter", str(caught.exception.code))
         self.assertIn("libass", str(caught.exception.code))
+
+    @needs_drawtext
+    def test_text_for_a_time_and_at_a_place(self):
+        out = self.dir / "texted.mp4"
+        # The text has characters that a filter reads in a special way.
+        vedit.main(["text", str(self.clip), "100% it's: [ok], done", "--position", "top-left", "--size", "40",
+                    "--from", "1", "--to", "3", "-o", str(out)])
+        self.assertAlmostEqual(duration(out), 4, delta=0.3)
+        self.assertEqual(streams(out), ["video", "audio"])
+        top_left, bottom_right = "160:60:0:0", "160:60:160:180"
+        for crop, expected_change in ((top_left, True), (bottom_right, False)):
+            before = self.difference(self.small_frame(out, ["-ss", "0.5"], crop), self.small_frame(self.clip, ["-ss", "0.5"], crop))
+            during = self.difference(self.small_frame(out, ["-ss", "2"], crop), self.small_frame(self.clip, ["-ss", "2"], crop))
+            after = self.difference(self.small_frame(out, ["-ss", "3.5"], crop), self.small_frame(self.clip, ["-ss", "3.5"], crop))
+            with self.subTest(crop=crop):
+                if expected_change:
+                    self.assertGreater(during, before + 2)
+                    self.assertGreater(during, after + 2)
+                else:
+                    self.assertLess(during, before + 2)
+
+    @needs_drawtext
+    def test_text_must_not_be_empty(self):
+        with self.assertRaises(SystemExit) as caught:
+            vedit.main(["text", str(self.clip), "  ", "-o", str(self.dir / "never_text.mp4")])
+        self.assertIn("must not be empty", str(caught.exception.code))
 
     def test_loop(self):
         for count, length in (("3", 12), ("1", 4)):

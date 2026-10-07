@@ -338,6 +338,43 @@ def cmd_subtitles(a):
                    out, a.force)
 
 
+# ffmpeg drawtext positions. w and h are the video size, text_w and text_h the text size, {m} the margin.
+TEXT_POSITIONS = {
+    "top-left": "{m}:{m}",
+    "top-center": "(w-text_w)/2:{m}",
+    "top-right": "w-text_w-{m}:{m}",
+    "center": "(w-text_w)/2:(h-text_h)/2",
+    "bottom-left": "{m}:h-text_h-{m}",
+    "bottom-center": "(w-text_w)/2:h-text_h-{m}",
+    "bottom-right": "w-text_w-{m}:h-text_h-{m}",
+}
+
+
+def cmd_text(a):
+    if not a.text.strip():
+        fail("the text must not be empty")
+    src = check_input(a.input)
+    out = resolve_out(a, src, "text")
+    require_filter("drawtext", "libfreetype")
+    x, y = TEXT_POSITIONS[a.position].format(m=10).split(":", 1)
+    shown = ""
+    if a.start is not None and a.end is not None:
+        shown = f":enable='between(t,{a.start},{a.end})'"
+    elif a.start is not None:
+        shown = f":enable='gte(t,{a.start})'"
+    elif a.end is not None:
+        shown = f":enable='lte(t,{a.end})'"
+    with tempfile.TemporaryDirectory() as tmp:
+        # The text is in a file and expansion is off, so the characters % : and quotes need no escape.
+        textfile = Path(tmp) / "text.txt"
+        textfile.write_text(a.text)
+        if not re.fullmatch(r"[A-Za-z0-9_./-]+", str(textfile)):
+            fail(f"the name of the temporary folder has a character that a filter cannot read: {tmp}")
+        draw = (f"drawtext=textfile='{textfile}':expansion=none:fontsize={a.size}:fontcolor={a.color}"
+                f":x={x}:y={y}{shown}")
+        run_ffmpeg(["-i", ff(src), "-vf", f"{EVEN},{draw}", *PIX_FMT, "-c:a", "copy"], out, a.force)
+
+
 def cmd_audio(a):
     src = check_input(a.input)
     out = resolve_out(a, src, "audio", ".mp3")
@@ -503,6 +540,14 @@ def non_negative_int(text):
     return value
 
 
+def non_negative_number(text):
+    """An argparse type for a number of 0 or more."""
+    value = float(text)
+    if not value >= 0:  # This also stops nan.
+        raise argparse.ArgumentTypeError("must be 0 or more")
+    return value
+
+
 def positive_number(text):
     """An argparse type for a number above 0."""
     value = float(text)
@@ -617,6 +662,19 @@ def build_parser():
     sp.add_argument("height", type=positive_int, help="height of the cut in pixels, an even number")
     sp.add_argument("--x", type=non_negative_int, help="left edge of the cut in pixels, the center if you give none")
     sp.add_argument("--y", type=non_negative_int, help="top edge of the cut in pixels, the center if you give none")
+
+    sp = add("text", cmd_text, "write text on a clip, for the whole clip or for a time",
+             'vedit text clip.mp4 "Hello" --position top-left --from 1 --to 3')
+    sp.add_argument("input", help="the video file")
+    sp.add_argument("text", help="the text to write, it must not be empty")
+    sp.add_argument("--position", choices=sorted(TEXT_POSITIONS), default="bottom-center",
+                    help="place of the text")
+    sp.add_argument("--size", type=positive_int, default=36, help="height of the letters in pixels")
+    sp.add_argument("--color", default="white", help="color of the text, an ffmpeg color name or 0xRRGGBB")
+    sp.add_argument("--from", dest="start", type=non_negative_number, metavar="SECONDS",
+                    help="time when the text appears, the start of the clip if you give none")
+    sp.add_argument("--to", dest="end", type=non_negative_number, metavar="SECONDS",
+                    help="time when the text goes away, the end of the clip if you give none")
 
     sp = add("subtitles", cmd_subtitles, "burn subtitles from an .srt file into the picture",
              "vedit subtitles clip.mp4 clip.srt")
