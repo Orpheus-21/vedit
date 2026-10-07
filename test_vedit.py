@@ -20,23 +20,27 @@ needs_imagemagick = unittest.skipUnless(
     "ImageMagick is not installed")
 
 
+def probe(path, entries, fmt="csv=p=0", select=None):
+    """Return the text that ffprobe prints for the entries of a file."""
+    cmd = ["ffprobe", "-v", "error"]
+    if select:
+        cmd += ["-select_streams", select]
+    cmd += ["-show_entries", entries, "-of", fmt, str(path)]
+    return subprocess.run(cmd, capture_output=True, text=True, check=True).stdout.strip()
+
+
 def duration(path):
-    out = subprocess.run(
-        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
-         "-of", "default=nw=1:nk=1", str(path)],
-        capture_output=True, text=True, check=True,
-    )
-    return float(out.stdout)
+    return float(probe(path, "format=duration"))
 
 
 def streams(path):
     """Return the stream types of a file, for example ['video', 'audio']."""
-    out = subprocess.run(
-        ["ffprobe", "-v", "error", "-show_entries", "stream=codec_type",
-         "-of", "csv=p=0", str(path)],
-        capture_output=True, text=True, check=True,
-    )
-    return out.stdout.split()
+    return probe(path, "stream=codec_type").split()
+
+
+def video_size(path):
+    """Return the size of the first video stream, for example '320x240'."""
+    return probe(path, "stream=width,height", "csv=p=0:s=x", "v:0")
 
 
 @needs_ffmpeg
@@ -135,7 +139,7 @@ class VeditTest(unittest.TestCase):
         self.assertEqual(vedit.video_format(turned)[:2], (240, 320))
         out = self.dir / "jr.mp4"
         vedit.main(["join", str(turned), str(self.clip), "-o", str(out)])
-        self.assertEqual(self.video_size(out), "240x320")
+        self.assertEqual(video_size(out), "240x320")
         self.assertAlmostEqual(duration(out), 8, delta=0.3)
 
     def test_join_uses_the_average_frame_rate(self):
@@ -180,15 +184,15 @@ class VeditTest(unittest.TestCase):
         # The clip is 320 pixels wide. The default GIF width is 480.
         gif = self.dir / "small.gif"
         vedit.main(["gif", str(self.clip), "-o", str(gif)])
-        self.assertEqual(self.video_size(gif), "320x240")
+        self.assertEqual(video_size(gif), "320x240")
         narrow = self.dir / "narrow.gif"
         vedit.main(["gif", str(self.clip), "--width", "100", "-o", str(narrow)])
-        self.assertEqual(self.video_size(narrow), "100x75")
+        self.assertEqual(video_size(narrow), "100x75")
         sheet = self.dir / "wide_sheet.png"
         vedit.main(["sheet", str(self.clip), "--cols", "2", "--rows", "1", "--width", "500",
                     "-o", str(sheet)])
         # Each frame is 320x240 plus 4 pixels of border on every side.
-        self.assertEqual(self.video_size(sheet), "656x248")
+        self.assertEqual(video_size(sheet), "656x248")
 
     def test_compress(self):
         out = self.dir / "c.mp4"
@@ -209,23 +213,16 @@ class VeditTest(unittest.TestCase):
     def test_frame(self):
         out = self.dir / "f.png"
         vedit.main(["frame", str(self.clip), "2", "-o", str(out)])
-        self.assertEqual(self.video_size(out), "320x240")
+        self.assertEqual(video_size(out), "320x240")
 
     def test_frame_after_the_end(self):
         with self.assertRaises(SystemExit):
             vedit.main(["frame", str(self.clip), "99", "-o", str(self.dir / "late.png")])
 
-    def video_size(self, path):
-        return subprocess.run(
-            ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
-             "stream=width,height", "-of", "csv=p=0:s=x", str(path)],
-            capture_output=True, text=True, check=True,
-        ).stdout.strip()
-
     def test_resize_width_only(self):
         out = self.dir / "r.mp4"
         vedit.main(["resize", str(self.clip), "--width", "160", "-o", str(out)])
-        self.assertEqual(self.video_size(out), "160x120")
+        self.assertEqual(video_size(out), "160x120")
 
     def test_resize_odd_width(self):
         with self.assertRaises(SystemExit):
@@ -238,7 +235,7 @@ class VeditTest(unittest.TestCase):
     def test_rotate(self):
         out = self.dir / "rot.mp4"
         vedit.main(["rotate", str(self.clip), "90", "-o", str(out)])
-        self.assertEqual(self.video_size(out), "240x320")
+        self.assertEqual(video_size(out), "240x320")
 
     def is_red(self, video, x, y):
         """Return True if the pixel at x, y in the first frame is red."""
@@ -325,7 +322,7 @@ class VeditTest(unittest.TestCase):
         out = self.dir / "sheet.png"
         vedit.main(["sheet", str(self.clip), "--cols", "3", "--rows", "2", "--width", "100", "-o", str(out)])
         # Each tile is 100x75 plus 4 pixels of border on every side.
-        self.assertEqual(self.video_size(out), f"{3 * 108}x{2 * 83}")
+        self.assertEqual(video_size(out), f"{3 * 108}x{2 * 83}")
 
     def test_commands_that_encode_accept_an_odd_size(self):
         odd = self.dir / "odd.mp4"
@@ -348,7 +345,7 @@ class VeditTest(unittest.TestCase):
             with self.subTest(command=name):
                 out = self.dir / f"odd_{name}.mp4"
                 vedit.main([*args, "-o", str(out)])
-                self.assertEqual(self.video_size(out), size)
+                self.assertEqual(video_size(out), size)
 
     def test_commands_that_encode_write_yuv420p(self):
         # A yuv444p clip makes libx264 write the profile High 4:4:4, which many players cannot play.
