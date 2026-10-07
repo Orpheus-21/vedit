@@ -311,6 +311,31 @@ class VeditTest(unittest.TestCase):
         self.assertEqual(streams(out), ["audio"])
         self.assertAlmostEqual(duration(out), 4, delta=0.3)
 
+    def test_audio_bitrate(self):
+        # A sine tone needs few bits in AAC. Noise needs the full bitrate, so the M4A cases use noise.
+        noisy = self.dir / "noisy.mp4"
+        subprocess.run(
+            ["ffmpeg", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=size=320x240:rate=25:duration=4",
+             "-f", "lavfi", "-i", "anoisesrc=d=4:c=white:a=0.3:r=44100", "-shortest", str(noisy)],
+            check=True,
+        )
+        for source, name, options, expected in (
+                (self.clip, "default.mp3", [], 192000), (self.clip, "low.mp3", ["--bitrate", "96k"], 96000),
+                (noisy, "default.m4a", [], 192000), (noisy, "high.m4a", ["--bitrate", "256k"], 256000)):
+            with self.subTest(name=name, options=options):
+                out = self.dir / name
+                vedit.main(["audio", str(source), *options, "-o", str(out)])
+                found = int(probe(out, "stream=bit_rate", select="a:0"))
+                # The bitrate is a target. The AAC encoder can go 15 percent over it.
+                self.assertAlmostEqual(found, expected, delta=expected * 0.2)
+
+    def test_audio_bitrate_is_checked(self):
+        for value in ("0", "abc", "-5", "12.5k"):
+            with self.subTest(value=value), contextlib.redirect_stderr(io.StringIO()), \
+                    self.assertRaises(SystemExit) as caught:
+                vedit.main(["audio", str(self.clip), "--bitrate", value])
+            self.assertEqual(caught.exception.code, 2)
+
     def test_mute(self):
         out = self.dir / "m.mp4"
         vedit.main(["mute", str(self.clip), "-o", str(out)])

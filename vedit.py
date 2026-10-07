@@ -437,7 +437,9 @@ def cmd_audio(a):
     src = check_input(a.input)
     out = resolve_out(a, src, "audio", ".mp3")
     # ffmpeg picks the audio format from the output extension: .mp3, .wav, .m4a, .flac
-    run_ffmpeg(["-i", ff(src), "-vn"], out, a.force)
+    # The formats .mp3 and .m4a have a bitrate. The other formats do not use one.
+    bitrate = a.bitrate or ("192k" if out.suffix.lower() in (".mp3", ".m4a") else None)
+    run_ffmpeg(["-i", ff(src), "-vn", *(["-b:a", bitrate] if bitrate else [])], out, a.force)
 
 
 def cmd_volume(a):
@@ -608,6 +610,13 @@ def positive_int(text):
     if value < 1:
         raise argparse.ArgumentTypeError("must be 1 or more")
     return value
+
+
+def bitrate_value(text):
+    """An argparse type for a bitrate such as 192k, 96K, or 128000."""
+    if not re.fullmatch(r"[1-9]\d*[kKmM]?", text):
+        raise argparse.ArgumentTypeError("must be a number, with k or m after it if you want, for example 192k")
+    return text
 
 
 def non_negative_int(text):
@@ -792,8 +801,10 @@ def build_parser():
     sp.add_argument("--fade-out", type=positive_number, metavar="SECONDS", help="length of the fade out to black")
 
     sp = add("audio", cmd_audio, "save the sound of a clip as an audio file",
-            "vedit audio clip.mp4 -o sound.wav")
+            "vedit audio clip.mp4 -o sound.mp3 --bitrate 128k")
     sp.add_argument("input", help="the video file")
+    sp.add_argument("--bitrate", type=bitrate_value,
+                    help="bits per second of the sound, for example 128k, used for .mp3 and .m4a, 192k if you give none")
 
     sp = add("mute", cmd_mute, "remove the sound from a clip",
             "vedit mute clip.mp4")
