@@ -589,6 +589,32 @@ class VeditTest(unittest.TestCase):
         self.assertEqual(caught.exception.code, 0)
         self.assertEqual(stdout.getvalue().strip(), f"vedit {vedit.__version__}")
 
+    def test_dry_run_prints_the_command_and_writes_no_file(self):
+        out = self.dir / "dry.mp4"
+        for args in (["--dry-run", "trim", str(self.clip), "1", "2"],
+                     ["trim", str(self.clip), "1", "2", "--dry-run"]):
+            with self.subTest(args=args[:2]):
+                stdout = io.StringIO()
+                with contextlib.redirect_stdout(stdout):
+                    vedit.main([*args, "-o", str(out)])
+                lines = stdout.getvalue().splitlines()
+                self.assertEqual(len(lines), 1)
+                self.assertEqual(shlex.split(lines[0])[0], "ffmpeg")
+                self.assertIn("-ss", lines[0])
+                self.assertFalse(out.exists())
+        self.assertFalse(vedit.dry_run)
+
+    @needs_imagemagick
+    def test_dry_run_of_title_prints_two_commands(self):
+        out = self.dir / "dry_title.mp4"
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            vedit.main(["--dry-run", "title", "x", "--size", "320x240", "-o", str(out)])
+        tools = [shlex.split(line)[0] for line in stdout.getvalue().splitlines()]
+        self.assertIn(tools[0], ("magick", "convert"))
+        self.assertEqual(tools[1:], ["ffmpeg"])
+        self.assertFalse(out.exists())
+
     def test_no_overwrite_without_force(self):
         out = self.dir / "o.mp4"
         out.write_text("x")

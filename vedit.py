@@ -4,6 +4,7 @@ Needs Python 3 and ffmpeg. The commands title and sheet also need ImageMagick.""
 import argparse
 import json
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -11,6 +12,9 @@ import tempfile
 from pathlib import Path
 
 __version__ = "0.1.0"
+
+# The flag --dry-run sets this to True. Then vedit prints each command and does not run it.
+dry_run = False
 
 
 # H.264 needs an even width and an even height. This filter cuts off one pixel of an odd side.
@@ -52,6 +56,9 @@ def check_output(out, force):
 def run_tool(cmd, out, name):
     """Run a program with an argument list. Never use a shell.
     If the program fails or the user presses Ctrl+C, delete the output file that this run made."""
+    if dry_run:
+        print(shlex.join(cmd))
+        return
     existed = out.exists()
     done = False
     try:
@@ -78,7 +85,7 @@ def run_ffmpeg(args, out, force, pattern=False):
     stats = ["-stats"] if sys.stderr.isatty() else []
     run_tool(["ffmpeg", "-hide_banner", "-loglevel", "error", *stats, "-y", *args, ff(out)],
              out, "ffmpeg")
-    if not pattern:
+    if not pattern and not dry_run:
         # ffmpeg can exit with code 0 and write nothing, for example for a time after the end.
         if not out.exists():
             fail(f"ffmpeg wrote no output: {out}")
@@ -375,6 +382,7 @@ def build_parser():
                                 formatter_class=HelpFormatter)
     p.add_argument("-f", "--force", action="store_true", help="overwrite the output file")
     p.add_argument("--version", action="version", version=f"vedit {__version__}")
+    p.add_argument("--dry-run", action="store_true", help="print the commands and do not run them")
     sub = p.add_subparsers(dest="command", required=True)
 
     def add(name, func, help_text, example):
@@ -384,6 +392,8 @@ def build_parser():
         # SUPPRESS keeps the value that -f before the command name set.
         sp.add_argument("-f", "--force", action="store_true", default=argparse.SUPPRESS,
                         help="overwrite the output file")
+        sp.add_argument("--dry-run", action="store_true", default=argparse.SUPPRESS,
+                        help="print the commands and do not run them")
         sp.set_defaults(func=func)
         return sp
 
@@ -465,12 +475,16 @@ def build_parser():
 
 
 def main(argv=None):
+    global dry_run
     a = build_parser().parse_args(argv)
+    dry_run = a.dry_run
     try:
         a.func(a)
     except KeyboardInterrupt:
         print("vedit: interrupted", file=sys.stderr)
         sys.exit(130)
+    finally:
+        dry_run = False
 
 
 if __name__ == "__main__":
