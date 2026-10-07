@@ -307,6 +307,13 @@ def cmd_reverse(a):
     run_ffmpeg(["-i", ff(src), "-vf", f"reverse,{EVEN}", *PIX_FMT, "-af", "areverse"], out, a.force)
 
 
+def cmd_loop(a):
+    src = check_input(a.input)
+    out = resolve_out(a, src, "loop")
+    # The option -stream_loop gives the number of extra plays. A stream copy does not encode.
+    run_ffmpeg(["-stream_loop", str(a.count - 1), "-i", ff(src), "-c", "copy"], out, a.force)
+
+
 def cmd_audio(a):
     src = check_input(a.input)
     out = resolve_out(a, src, "audio", ".mp3")
@@ -586,6 +593,10 @@ def build_parser():
     sp.add_argument("height", type=positive_int, help="height of the cut in pixels, an even number")
     sp.add_argument("--x", type=non_negative_int, help="left edge of the cut in pixels, the center if you give none")
     sp.add_argument("--y", type=non_negative_int, help="top edge of the cut in pixels, the center if you give none")
+
+    sp = add("loop", cmd_loop, "play a clip again and again, the number of times you give", "vedit loop clip.mp4 3")
+    sp.add_argument("input", help="the video file")
+    sp.add_argument("count", type=positive_int, help="how many times the clip plays, in total")
 
     sp = add("reverse", cmd_reverse, "play a clip backward, use it for short clips only",
              "vedit reverse clip.mp4")

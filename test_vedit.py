@@ -429,6 +429,17 @@ class VeditTest(unittest.TestCase):
     def difference(self, first, second):
         return sum(abs(one - two) for one, two in zip(first, second)) / len(first)
 
+    def test_loop(self):
+        for count, length in (("3", 12), ("1", 4)):
+            with self.subTest(count=count):
+                out = self.dir / f"loop{count}.mp4"
+                vedit.main(["loop", str(self.clip), count, "-o", str(out)])
+                self.assertAlmostEqual(duration(out), length, delta=0.4)
+                self.assertEqual(streams(out), ["video", "audio"])
+                # The stream copy does not encode, so the codec stays the same.
+                self.assertEqual(probe(out, "stream=codec_name", select="v:0"),
+                                 probe(self.clip, "stream=codec_name", select="v:0"))
+
     def test_reverse(self):
         out = self.dir / "backward.mp4"
         vedit.main(["reverse", str(self.clip), "-o", str(out)])
@@ -698,6 +709,7 @@ class VeditTest(unittest.TestCase):
             (["watermark", "clip.mp4", "logo.png"], "clip_mark.mp4"),
             (["fade", "clip.mp4", "--fade-in", "1"], "clip_fade.mp4"),
             (["reverse", "clip.mp4"], "clip_reverse.mp4"),
+            (["loop", "clip.mp4", "2"], "clip_loop.mp4"),
             (["crop", "clip.mp4", "160", "120"], "clip_crop.mp4"),
             (["volume", "clip.mp4", "2"], "clip_volume.mp4"),
             (["normalize", "clip.mp4"], "clip_norm.mp4"),
