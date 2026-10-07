@@ -17,6 +17,7 @@ Each vedit command runs one `ffmpeg` or ImageMagick job. You give the command a 
 | `rotate` | Turns a clip 90, 180, or 270 degrees clockwise. |
 | `watermark` | Puts a logo on a clip. |
 | `crop` | Cuts away the edges of the picture. |
+| `loop` | Plays a clip again and again, the number of times you give. |
 | `reverse` | Plays a clip backward. |
 | `fade` | Fades a clip in from black, or out to black, with the sound. |
 | `audio` | Saves the sound of a clip as an audio file. |
@@ -186,6 +187,14 @@ python3 vedit.py crop clip.mp4 640 360
 python3 vedit.py crop clip.mp4 640 360 --x 0 --y 0
 ```
 
+### loop
+
+Gives the number of times that the clip plays in total. The count 3 gives a clip that is three times as long. The command copies the streams and does not encode them.
+
+```
+python3 vedit.py loop clip.mp4 3
+```
+
 ### reverse
 
 Plays a clip backward, the picture and the sound. The `ffmpeg` filters hold the whole clip in memory, so use this command for short clips only.
@@ -327,6 +336,7 @@ Without `-o`, vedit writes the output next to the input file. The name is the na
 | `rotate` | `clip_rot90.mp4` (the tag holds the degrees) |
 | `watermark` | `clip_mark.mp4` |
 | `crop` | `clip_crop.mp4` |
+| `loop` | `clip_loop.mp4` |
 | `reverse` | `clip_reverse.mp4` |
 | `fade` | `clip_fade.mp4` |
 | `audio` | `clip_audio.mp3` |
