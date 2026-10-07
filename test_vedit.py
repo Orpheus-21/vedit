@@ -180,6 +180,31 @@ class VeditTest(unittest.TestCase):
         with mock.patch("vedit.ffprobe", return_value=probe):
             self.assertEqual(vedit.video_format("clip.mp4"), (320, 240, "25/1"))
 
+    def test_join_with_a_crossfade(self):
+        out = self.dir / "jx.mp4"
+        vedit.main(["join", str(self.clip), str(self.clip), "--crossfade", "1", "-o", str(out)])
+        # Two clips of 4 seconds with a crossfade of 1 second are 7 seconds long.
+        self.assertAlmostEqual(duration(out), 7, delta=0.3)
+        self.assertAlmostEqual(float(probe(out, "stream=duration", select="v:0")), 7, delta=0.3)
+        self.assertEqual(streams(out), ["video", "audio"])
+        three = self.dir / "jx3.mp4"
+        vedit.main(["join", str(self.clip), str(self.clip), str(self.clip), "--crossfade", "1.5", "-o", str(three)])
+        self.assertAlmostEqual(duration(three), 9, delta=0.4)
+
+    def test_join_with_a_crossfade_and_no_sound(self):
+        silent = self.dir / "quiet_x.mp4"
+        vedit.main(["mute", str(self.clip), "-o", str(silent)])
+        out = self.dir / "jxs.mp4"
+        vedit.main(["join", str(silent), str(silent), "--crossfade", "1", "-o", str(out)])
+        self.assertEqual(streams(out), ["video"])
+        self.assertAlmostEqual(duration(out), 7, delta=0.3)
+
+    def test_crossfade_must_be_shorter_than_the_clips(self):
+        with self.assertRaises(SystemExit) as caught:
+            vedit.main(["join", str(self.clip), str(self.clip), "--crossfade", "4",
+                        "-o", str(self.dir / "never_x.mp4")])
+        self.assertIn("shorter than each clip", str(caught.exception.code))
+
     def test_join_with_a_clip_that_has_no_sound(self):
         silent = self.dir / "silent.mp4"
         vedit.main(["mute", str(self.clip), "-o", str(silent)])

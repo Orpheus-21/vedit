@@ -178,8 +178,8 @@ def cmd_join(a):
     w, h, fps = video_format(srcs[0])
     w, h = w - w % 2, h - h % 2
     fit = (f"scale={w}:{h}:force_original_aspect_ratio=decrease,"
-           f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps={fps}")
-    # ponytail: no crossfade, and the output has no sound if one clip has no sound
+           f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps={fps},format=yuv420p")
+    # ponytail: the output has no sound if one clip has no sound
     with_audio = all(ffprobe(s, "stream=codec_type", "csv=p=0", "a:0") for s in srcs)
     inputs, parts, labels = [], [], ""
     for i, src in enumerate(srcs):
@@ -189,7 +189,23 @@ def cmd_join(a):
         if with_audio:
             parts.append(f"[{i}:a]aresample=48000,aformat=channel_layouts=stereo[a{i}]")
             labels += f"[a{i}]"
-    parts.append(f"{labels}concat=n={len(srcs)}:v=1:a={int(with_audio)}[v]" + ("[a]" if with_audio else ""))
+    if a.crossfade and len(srcs) > 1:
+        fade = a.crossfade
+        durations = [video_duration(src) for src in srcs]
+        if fade >= min(durations):
+            fail("the crossfade must be shorter than each clip")
+        # Each clip starts one crossfade before the end of the clips before it.
+        offset = 0
+        for i in range(1, len(srcs)):
+            offset += durations[i - 1] - fade
+            last = i == len(srcs) - 1
+            before_v, before_a = ("v0", "a0") if i == 1 else (f"x{i - 1}", f"y{i - 1}")
+            parts.append(f"[{before_v}][v{i}]xfade=transition=fade:duration={fade}:offset={offset}"
+                         f"[{'v' if last else f'x{i}'}]")
+            if with_audio:
+                parts.append(f"[{before_a}][a{i}]acrossfade=d={fade}[{'a' if last else f'y{i}'}]")
+    else:
+        parts.append(f"{labels}concat=n={len(srcs)}:v=1:a={int(with_audio)}[v]" + ("[a]" if with_audio else ""))
     maps = ["-map", "[v]"] + (["-map", "[a]"] if with_audio else [])
     run_ffmpeg([*inputs, "-filter_complex", ";".join(parts), *maps, *PIX_FMT], out, a.force)
 
@@ -411,6 +427,8 @@ def build_parser():
     sp = add("join", cmd_join, "join clips one after the other",
             "vedit join intro.mp4 main.mp4 outro.mp4")
     sp.add_argument("inputs", nargs="+", metavar="input", help="the video files, in the order to join them")
+    sp.add_argument("--crossfade", type=positive_number, metavar="SECONDS",
+                    help="fade from each clip to the next clip in this time, the fade overlaps the clips")
 
     sp = add("speed", cmd_speed, "make a clip faster or slower",
             "vedit speed clip.mp4 2")
