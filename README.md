@@ -84,7 +84,7 @@ python3 vedit.py COMMAND INPUT [options]
 
 Use `python3 vedit.py COMMAND --help` to see the options of one command. If you installed the command `vedit`, write `vedit` in place of `python3 vedit.py` in all examples.
 
-Use `python3 vedit.py --version` to see the version of vedit.
+Use `python3 vedit.py --version` to see the version of vedit. Add `--dry-run` to see the `ffmpeg` and ImageMagick commands without a run. vedit then writes no output file.
 
 Times are in seconds (`90`) or in the form `H:MM:SS` (`0:01:30.5`).
 
@@ -212,6 +212,7 @@ vedit has no configuration file. All settings are command-line options.
 |---|---|---|---|
 | `-o`, `--output` | all | see below | The path of the output file. |
 | `-f`, `--force` | all | off | Overwrites an output file that exists. You can write it before or after the command name. |
+| `--dry-run` | all | off | Prints each `ffmpeg` and ImageMagick command and does not run it. You can write it before or after the command name. |
 | `--fps` | `gif` | 12 | Frames per second of the GIF. Use 1 or more. |
 | `--width` | `gif` | 480 | Largest width of the GIF in pixels. vedit does not enlarge a clip. |
 | `--crf` | `compress` | 28 | Quality, from 0 to 51. A lower value gives higher quality. |
