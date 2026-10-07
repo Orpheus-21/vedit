@@ -37,10 +37,22 @@ def fail(message):
 
 
 def resolve_out(a, src, tag, ext=None):
-    """Return the output path: the value of -o, or <name>_<tag>.<ext> next to the input file."""
+    """Return the output path: the value of -o, or <name>_<tag>.<ext> in the folder of --output-dir,
+    or <name>_<tag>.<ext> next to the input file."""
     if a.output:
+        if a.output_dir:
+            fail("use -o or --output-dir, not both")
         return Path(a.output)
-    return src.with_name(f"{src.stem}_{tag}{ext or src.suffix}")
+    name = f"{src.stem}_{tag}{ext or src.suffix}"
+    return in_output_dir(a, name) if a.output_dir else src.with_name(name)
+
+
+def in_output_dir(a, name):
+    """Return the path of a file in the folder of --output-dir. Make the folder if it does not exist."""
+    folder = Path(a.output_dir)
+    if not dry_run:
+        folder.mkdir(parents=True, exist_ok=True)
+    return folder / name
 
 
 def check_input(path):
@@ -531,7 +543,14 @@ def cmd_title(a):
     if not m or int(m[1]) % 2 or int(m[2]) % 2 or 0 in (int(m[1]), int(m[2])):
         fail("size must be WIDTHxHEIGHT with even numbers, for example 1280x720")
     w, h = int(m[1]), int(m[2])
-    out = Path(a.output) if a.output else Path("title.mp4")
+    if a.output and a.output_dir:
+        fail("use -o or --output-dir, not both")
+    if a.output:
+        out = Path(a.output)
+    elif a.output_dir:
+        out = in_output_dir(a, "title.mp4")
+    else:
+        out = Path("title.mp4")
     if not a.text.strip():
         fail("title text must not be empty")
     if a.fade and a.fade * 2 > a.seconds:
@@ -683,6 +702,7 @@ def build_parser():
     p.add_argument("-f", "--force", action="store_true", help="overwrite the output file")
     p.add_argument("--version", action="version", version=f"vedit {__version__}")
     p.add_argument("--dry-run", action="store_true", help="print the commands and do not run them")
+    p.add_argument("--output-dir", metavar="DIR", help="save the output files in this folder, vedit makes it if needed")
     sub = p.add_subparsers(dest="command", required=True)
 
     def add(name, func, help_text, example):
@@ -694,6 +714,8 @@ def build_parser():
                         help="overwrite the output file")
         sp.add_argument("--dry-run", action="store_true", default=argparse.SUPPRESS,
                         help="print the commands and do not run them")
+        sp.add_argument("--output-dir", metavar="DIR", default=argparse.SUPPRESS,
+                        help="save the output files in this folder, vedit makes it if needed")
         sp.set_defaults(func=func)
         return sp
 

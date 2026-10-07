@@ -1071,6 +1071,38 @@ class VeditTest(unittest.TestCase):
         self.assertEqual(tools[1:], ["ffmpeg"])
         self.assertFalse(out.exists())
 
+    def test_output_dir(self):
+        folder = self.dir / "made" / "here"
+        for args in (["--output-dir", str(folder), "mute", str(self.clip)],
+                     ["mute", str(self.clip), "--output-dir", str(folder)]):
+            with self.subTest(args=args[:1]):
+                vedit.main(args)
+                made = folder / "my 'clip'_mute.mp4"
+                self.assertEqual(streams(made), ["video"])
+                made.unlink()
+        # The folder of the input file gets no new file.
+        self.assertFalse((self.clip.parent / "my 'clip'_mute.mp4").exists())
+
+    @needs_imagemagick
+    def test_output_dir_for_title_and_sheet(self):
+        folder = self.dir / "cards"
+        vedit.main(["title", "x", "--size", "320x240", "--seconds", "1", "--output-dir", str(folder)])
+        vedit.main(["sheet", str(self.clip), "--cols", "2", "--rows", "1", "--output-dir", str(folder)])
+        self.assertTrue((folder / "title.mp4").stat().st_size > 0)
+        self.assertTrue((folder / "my 'clip'_sheet.jpg").stat().st_size > 0)
+
+    def test_output_dir_and_output_exclude_each_other(self):
+        with self.assertRaises(SystemExit) as caught:
+            vedit.main(["mute", str(self.clip), "-o", str(self.dir / "o.mp4"), "--output-dir", str(self.dir / "d")])
+        self.assertIn("not both", str(caught.exception.code))
+        self.assertFalse((self.dir / "d").exists())
+
+    def test_dry_run_does_not_make_the_output_dir(self):
+        folder = self.dir / "never_made"
+        with contextlib.redirect_stdout(io.StringIO()):
+            vedit.main(["--dry-run", "mute", str(self.clip), "--output-dir", str(folder)])
+        self.assertFalse(folder.exists())
+
     def test_no_overwrite_without_force(self):
         out = self.dir / "o.mp4"
         out.write_text("x")
