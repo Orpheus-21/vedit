@@ -582,6 +582,13 @@ class VeditTest(unittest.TestCase):
                 self.assertEqual(example[:2], ["vedit", name])
                 self.assertEqual(vedit.build_parser().parse_args(example[1:]).command, name)
 
+    def test_version(self):
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout), self.assertRaises(SystemExit) as caught:
+            vedit.main(["--version"])
+        self.assertEqual(caught.exception.code, 0)
+        self.assertEqual(stdout.getvalue().strip(), f"vedit {vedit.__version__}")
+
     def test_no_overwrite_without_force(self):
         out = self.dir / "o.mp4"
         out.write_text("x")

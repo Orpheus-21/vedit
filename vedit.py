@@ -10,6 +10,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+__version__ = "0.1.0"
+
 
 # H.264 needs an even width and an even height. This filter cuts off one pixel of an odd side.
 EVEN = "scale=trunc(iw/2)*2:trunc(ih/2)*2"
@@ -372,6 +374,7 @@ def build_parser():
     p = argparse.ArgumentParser(prog="vedit", description="Simple video edits with ffmpeg and ImageMagick.",
                                 formatter_class=HelpFormatter)
     p.add_argument("-f", "--force", action="store_true", help="overwrite the output file")
+    p.add_argument("--version", action="version", version=f"vedit {__version__}")
     sub = p.add_subparsers(dest="command", required=True)
 
     def add(name, func, help_text, example):
