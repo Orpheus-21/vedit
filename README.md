@@ -16,6 +16,7 @@ Each vedit command runs one `ffmpeg` or ImageMagick job. You give the command a 
 | `resize` | Changes the width, the height, or both. |
 | `rotate` | Turns a clip 90, 180, or 270 degrees clockwise. |
 | `watermark` | Puts a logo on a clip. |
+| `fade` | Fades a clip in from black, or out to black, with the sound. |
 | `audio` | Saves the sound of a clip as an audio file. |
 | `mute` | Removes the sound from a clip. |
 | `frame` | Saves one frame of a clip as an image. |
@@ -172,6 +173,14 @@ Use `--opacity` to make the logo transparent. The value 1 is solid. The value 0.
 python3 vedit.py watermark clip.mp4 logo.png --opacity 0.5
 ```
 
+### fade
+
+Give `--fade-in`, `--fade-out`, or both. Each value is a time in seconds. The fades must fit in the length of the clip. The sound fades with the picture.
+
+```
+python3 vedit.py fade clip.mp4 --fade-in 1 --fade-out 2
+```
+
 ### audio
 
 The extension of the output file selects the audio format, for example `.mp3`, `.wav`, `.m4a`, or `.flac`.
@@ -254,6 +263,8 @@ vedit has no configuration file. All settings are command-line options.
 | `--scale` | `watermark` | none | Width of the logo as a share of the video width. Use a number above 0 and at most 1. |
 | `--margin` | `watermark` | 10 | Space between the logo and the edge in pixels. Use 0 or more. |
 | `--opacity` | `watermark` | 1 | How solid the logo is. Use a number above 0 and at most 1. |
+| `--fade-in` | `fade` | none | Length of the fade in from black, in seconds. Use a number above 0. |
+| `--fade-out` | `fade` | none | Length of the fade out to black, in seconds. Use a number above 0. |
 | `--seconds` | `title` | 3 | Length of the title card in seconds. Use a number above 0. |
 | `--size` | `title` | `1280x720` | Size of the title card. Both numbers must be even. |
 | `--fps` | `title` | 25 | Frames per second of the title card. Use 1 or more. |
@@ -276,6 +287,7 @@ Without `-o`, vedit writes the output next to the input file. The name is the na
 | `resize` | `clip_resized.mp4` |
 | `rotate` | `clip_rot90.mp4` (the tag holds the degrees) |
 | `watermark` | `clip_mark.mp4` |
+| `fade` | `clip_fade.mp4` |
 | `audio` | `clip_audio.mp3` |
 | `mute` | `clip_mute.mp4` |
 | `frame` | `clip_frame.png` |
