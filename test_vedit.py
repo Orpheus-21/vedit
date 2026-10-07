@@ -652,6 +652,25 @@ class VeditTest(unittest.TestCase):
             self.assertIn("title text must not be empty", str(caught.exception.code))
             self.assertFalse(out.exists())
 
+    def test_clock(self):
+        self.assertEqual(vedit.clock(0), "0:00")
+        self.assertEqual(vedit.clock(75.9), "1:15")
+        self.assertEqual(vedit.clock(3599), "59:59")
+        self.assertEqual(vedit.clock(3725), "1:02:05")
+
+    @needs_imagemagick
+    def test_sheet_with_labels(self):
+        plain = self.dir / "plain_sheet.png"
+        labeled = self.dir / "labeled_sheet.png"
+        vedit.main(["sheet", str(self.clip), "--cols", "2", "--rows", "2", "--width", "100", "-o", str(plain)])
+        vedit.main(["sheet", str(self.clip), "--cols", "2", "--rows", "2", "--width", "100", "--labels",
+                    "-o", str(labeled)])
+        plain_width, plain_height = map(int, video_size(plain).split("x"))
+        labeled_width, labeled_height = map(int, video_size(labeled).split("x"))
+        self.assertEqual(labeled_width, plain_width)
+        # Each row has room for a line of text under the frames.
+        self.assertGreater(labeled_height, plain_height + 10)
+
     @needs_imagemagick
     def test_sheet(self):
         out = self.dir / "sheet.png"

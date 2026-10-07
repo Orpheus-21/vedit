@@ -558,6 +558,14 @@ def cmd_title(a):
         )
 
 
+def clock(seconds):
+    """Return a time for a label: M:SS, or H:MM:SS for an hour or more."""
+    seconds = int(seconds)
+    hours, rest = divmod(seconds, 3600)
+    minutes, secs = divmod(rest, 60)
+    return f"{hours}:{minutes:02d}:{secs:02d}" if hours else f"{minutes}:{secs:02d}"
+
+
 def cmd_sheet(a):
     src = check_input(a.input)
     out = resolve_out(a, src, "sheet", ".jpg")
@@ -572,10 +580,16 @@ def cmd_sheet(a):
             Path(tmp) / "%03d.png", True, pattern=True,
         )
         frames = sorted(Path(tmp).glob("*.png"))
+        pictures = [str(frame) for frame in frames]
+        look = []
+        if a.labels:
+            # Each label is the time of its frame. The label comes before the file name in the command.
+            times = [length / (2 * count) + i * length / count for i in range(len(frames))]
+            pictures = [part for t, frame in zip(times, frames) for part in ("-label", clock(t), str(frame))]
+            look = ["-fill", "white", "-pointsize", "14"]
         run_magick(
             "montage",
-            [*map(str, frames), "-tile", f"{a.cols}x{a.rows}", "-geometry", "+4+4",
-             "-background", "black"],
+            [*look, *pictures, "-tile", f"{a.cols}x{a.rows}", "-geometry", "+4+4", "-background", "black"],
             out, a.force,
         )
     print(f"wrote {out}")
@@ -802,6 +816,7 @@ def build_parser():
     sp = add("sheet", cmd_sheet, "make a contact sheet of frames (needs ImageMagick)",
             "vedit sheet clip.mp4 --cols 4 --rows 3")
     sp.add_argument("input", help="the video file")
+    sp.add_argument("--labels", action="store_true", help="write the time of each frame under the frame")
     sp.add_argument("--cols", type=positive_int, default=4, help="number of columns")
     sp.add_argument("--rows", type=positive_int, default=3, help="number of rows")
     sp.add_argument("--width", type=positive_int, default=320, help="largest width of each frame in pixels, vedit does not enlarge a clip")
