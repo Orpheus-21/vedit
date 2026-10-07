@@ -102,13 +102,20 @@ def magick_command(tool):
     fail("ImageMagick is not installed or not in PATH")
 
 
-def check_color(value):
-    """Stop if ImageMagick does not know the color.
+def check_magick(args, message):
+    """Run a small ImageMagick job. Stop with the message if it fails or prints a warning.
     For an unknown color, ImageMagick prints a warning, uses another color, and exits with the code 0."""
-    cmd = [*magick_command("convert"), "-size", "1x1", f"xc:{value}", "null:"]
-    run = subprocess.run(cmd, capture_output=True, text=True)
+    run = subprocess.run([*magick_command("convert"), *args, "null:"], capture_output=True, text=True)
     if run.returncode != 0 or run.stderr.strip():
-        fail(f"ImageMagick does not know the color: {value}")
+        fail(message)
+
+
+def check_color(value):
+    check_magick(["-size", "1x1", f"xc:{value}"], f"ImageMagick does not know the color: {value}")
+
+
+def check_font(value):
+    check_magick(["-font", value, "-size", "100x30", "label:x"], f"ImageMagick does not know the font: {value}")
 
 
 def run_magick(tool, args, out, force):
@@ -317,6 +324,9 @@ def cmd_title(a):
         fail("title text must not be empty")
     check_color(a.bg)
     check_color(a.fg)
+    font = ["-font", a.font] if a.font else []
+    if a.font:
+        check_font(a.font)
     # ImageMagick reads a file for text that starts with @ and expands %w style codes.
     text = a.text.replace("%", "%%")
     if text.startswith("@"):
@@ -325,7 +335,7 @@ def cmd_title(a):
         png = Path(tmp) / "title.png"
         run_magick(
             "convert",
-            ["-background", a.bg, "-fill", a.fg, "-gravity", "center",
+            [*font, "-background", a.bg, "-fill", a.fg, "-gravity", "center",
              "-size", f"{w * 8 // 10}x{h * 8 // 10}", f"caption:{text}",
              "-extent", f"{w}x{h}"],
             png, True,
@@ -487,6 +497,7 @@ def build_parser():
     sp.add_argument("--fps", type=positive_int, default=25, help="frames per second of the card")
     sp.add_argument("--bg", default="black", help="background color")
     sp.add_argument("--fg", default="white", help="text color")
+    sp.add_argument("--font", help="font name from `magick -list font`, or the path of a font file")
 
     sp = add("sheet", cmd_sheet, "make a contact sheet of frames (needs ImageMagick)",
             "vedit sheet clip.mp4 --cols 4 --rows 3")

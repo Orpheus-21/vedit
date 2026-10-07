@@ -3,6 +3,7 @@ import contextlib
 import io
 import json
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -594,6 +595,46 @@ class VeditTest(unittest.TestCase):
                     mock.patch("vedit.sys.stderr", Stream(tty)):
                 vedit.run_ffmpeg(["-i", str(self.clip)], self.dir / "x.mp4", False, pattern=True)
             self.assertEqual("-stats" in run.call_args[0][0], tty)
+
+    def two_fonts(self):
+        """Return the names of two different installed fonts, or None."""
+        tool = ["magick"] if shutil.which("magick") else ["convert"]
+        listing = subprocess.run([*tool, "-list", "font"], capture_output=True, text=True).stdout
+        names = re.findall(r"^\s*Font:\s*(\S+)", listing, re.M)
+
+        def works(name):
+            # ImageMagick can list a font that is not installed. Such a font gives an error.
+            run = subprocess.run([*tool, "-font", name, "-size", "100x30", "label:x", "null:"],
+                                 capture_output=True, text=True)
+            return run.returncode == 0 and not run.stderr.strip()
+
+        first = next((name for name in names[:30] if works(name)), None)
+        last = next((name for name in reversed(names[-30:]) if works(name)), None)
+        return (first, last) if first and last and first != last else None
+
+    @needs_imagemagick
+    def test_title_with_a_font(self):
+        fonts = self.two_fonts()
+        if fonts is None:
+            self.skipTest("ImageMagick has fewer than two fonts")
+        frames = []
+        for number, font in enumerate(fonts):
+            video = self.dir / f"font{number}.mp4"
+            vedit.main(["title", "Hello", "--size", "320x240", "--font", font, "-o", str(video)])
+            frames.append(subprocess.run(
+                ["ffmpeg", "-loglevel", "error", "-i", str(video), "-frames:v", "1", "-vf", "format=gray",
+                 "-f", "rawvideo", "-"], capture_output=True, check=True).stdout)
+        # Two fonts draw different pixels. Both cards must also show text, not only a black frame.
+        self.assertNotEqual(frames[0], frames[1])
+        self.assertTrue(all(max(frame) > 200 for frame in frames))
+
+    @needs_imagemagick
+    def test_title_with_an_unknown_font(self):
+        out = self.dir / "bad_font.mp4"
+        with self.assertRaises(SystemExit) as caught:
+            vedit.main(["title", "x", "--font", "notafont", "--size", "320x240", "-o", str(out)])
+        self.assertIn("does not know the font: notafont", str(caught.exception.code))
+        self.assertFalse(out.exists())
 
     def test_help_text_names_imagemagick(self):
         stdout = io.StringIO()
