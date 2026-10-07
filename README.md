@@ -189,6 +189,12 @@ python3 vedit.py title "My Holiday" --seconds 3
 python3 vedit.py join title.mp4 clip.mp4 -o holiday.mp4
 ```
 
+Use `--font` to choose the font. Give a font name from the command `magick -list font`, or the path of a font file. Without `--font`, ImageMagick uses its default font.
+
+```
+python3 vedit.py title "My Holiday" --font /path/to/font.ttf
+```
+
 ### sheet
 
 Takes one frame from the middle of each equal part of the clip. Then it puts the frames in a grid.
@@ -237,6 +243,7 @@ vedit has no configuration file. All settings are command-line options.
 | `--seconds` | `title` | 3 | Length of the title card in seconds. Use a number above 0. |
 | `--size` | `title` | `1280x720` | Size of the title card. Both numbers must be even. |
 | `--fps` | `title` | 25 | Frames per second of the title card. Use 1 or more. |
+| `--font` | `title` | the ImageMagick default | Font name or path of a font file. vedit stops with an error for a font that ImageMagick cannot use. |
 | `--bg` | `title` | `black` | Background color. Any ImageMagick color works, for example `black` or `#336699`. vedit stops with an error for an unknown color. |
 | `--fg` | `title` | `white` | Text color. The rule for an unknown color is the same as for `--bg`. |
 | `--cols` | `sheet` | 4 | Number of columns. Use 1 or more. |
@@ -272,7 +279,6 @@ If a run fails, or you press Ctrl+C, vedit deletes the output file that the run 
 * H.264 needs an even width and an even height. The commands that encode cut off one pixel of an odd width or an odd height.
 * `join` gives every clip the size and the average frame rate of the first clip. The size is the size that a player shows, after the turn that the metadata gives. `join` adds black bars to keep the aspect ratio. If one clip has no sound, the output has no sound.
 * `speed` accepts a factor from 0.5 to 100.
-* `title` uses the default ImageMagick font. It has no option to change the font.
 
 ## How it works
 
@@ -289,7 +295,7 @@ vedit passes the arguments as a list and never starts a shell. A file name with 
 Some commands use more than one step:
 
 * `join` probes the first clip with `ffprobe`. It reads the size, the turn in the metadata, and the average frame rate. Then it runs the `ffmpeg` concat filter, or the filters `xfade` and `acrossfade` for `--crossfade`, with one scale and pad chain for each clip.
-* `title` checks the two colors with ImageMagick, because ImageMagick only prints a warning for an unknown color. Then it draws the text into a PNG file. Then `ffmpeg` loops the PNG for the chosen time and adds silent audio. vedit escapes the characters `@` and `%` in the text, because ImageMagick gives them a special meaning.
+* `title` checks the two colors and the font with ImageMagick, because ImageMagick only prints a warning for an unknown color. Then it draws the text into a PNG file. Then `ffmpeg` loops the PNG for the chosen time and adds silent audio. vedit escapes the characters `@` and `%` in the text, because ImageMagick gives them a special meaning.
 * `sheet` finds the length of the clip with `ffprobe`. Then `ffmpeg` saves the frames in a temporary folder. Then `montage` puts the frames in a grid.
 
 ### Tests
