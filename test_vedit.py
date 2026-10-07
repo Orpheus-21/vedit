@@ -289,6 +289,22 @@ class VeditTest(unittest.TestCase):
         vedit.main(["compress", str(self.clip), "-o", str(out)])
         self.assertTrue(out.stat().st_size > 0)
 
+    def test_compress_max_height(self):
+        # The clip is 320x240. An odd limit is cut down to an even number.
+        for limit, size in (("120", "160x120"), ("121", "160x120"), ("480", "320x240")):
+            with self.subTest(limit=limit):
+                out = self.dir / f"max{limit}.mp4"
+                vedit.main(["compress", str(self.clip), "--max-height", limit, "-o", str(out)])
+                self.assertEqual(video_size(out), size)
+
+    def test_compress_preset(self):
+        out = self.dir / "fast_preset.mp4"
+        vedit.main(["compress", str(self.clip), "--preset", "ultrafast", "-o", str(out)])
+        self.assertEqual(streams(out), ["video", "audio"])
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as caught:
+            vedit.main(["compress", str(self.clip), "--preset", "bogus"])
+        self.assertEqual(caught.exception.code, 2)
+
     def test_audio(self):
         out = self.dir / "a.mp3"
         vedit.main(["audio", str(self.clip), "-o", str(out)])

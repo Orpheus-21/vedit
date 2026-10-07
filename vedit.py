@@ -17,6 +17,9 @@ __version__ = "0.1.0"
 dry_run = False
 
 
+# The presets of libx264, from the fastest to the slowest. A slower preset gives a smaller file.
+PRESETS = ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"]
+
 # H.264 needs an even width and an even height. This filter cuts off one pixel of an odd side.
 EVEN = "scale=trunc(iw/2)*2:trunc(ih/2)*2"
 # Many players cannot play H.264 with other pixel formats, for example yuv444p.
@@ -265,8 +268,12 @@ def cmd_gif(a):
 def cmd_compress(a):
     src = check_input(a.input)
     out = resolve_out(a, src, "small", ".mp4")
+    shrink = ""
+    if a.max_height:
+        # The width follows the height, as an even number. A clip that is lower than the limit stays as it is.
+        shrink = f",scale=-2:'trunc(min({a.max_height},ih)/2)*2'"
     run_ffmpeg(
-        ["-i", ff(src), "-vf", EVEN, *PIX_FMT, "-c:v", "libx264", "-crf", str(a.crf), "-preset", "medium",
+        ["-i", ff(src), "-vf", EVEN + shrink, *PIX_FMT, "-c:v", "libx264", "-crf", str(a.crf), "-preset", a.preset,
          "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart"],
         out, a.force,
     )
@@ -710,6 +717,9 @@ def build_parser():
             "vedit compress clip.mp4 --crf 28")
     sp.add_argument("input", help="the video file")
     sp.add_argument("--crf", type=crf_value, default=28, help="quality, 18 is high, 35 is low")
+    sp.add_argument("--preset", choices=PRESETS, default="medium", help="speed of the encoder, a slower preset gives a smaller file")
+    sp.add_argument("--max-height", type=positive_int, metavar="PIXELS",
+                    help="make a taller clip this high, vedit does not enlarge a clip")
 
     sp = add("resize", cmd_resize, "change the size of a clip",
             "vedit resize clip.mp4 --width 1280")
