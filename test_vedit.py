@@ -856,6 +856,22 @@ class VeditTest(unittest.TestCase):
             self.assertFalse(Path(out).exists())
 
     @needs_imagemagick
+    def test_title_with_a_fade(self):
+        out = self.dir / "fade_title.mp4"
+        vedit.main(["title", "Hello", "--size", "320x240", "--seconds", "2", "--fade", "0.5", "-o", str(out)])
+        self.assertAlmostEqual(duration(out), 2, delta=0.2)
+        self.assertLess(self.brightest(out, ["-ss", "0"]), 30)        # the first frame is black
+        self.assertGreater(self.brightest(out, ["-ss", "1"]), 200)    # the text shows in the middle
+        # At the last frame, the fade has 0.04 s of 0.5 s left, so a little light stays.
+        self.assertLess(self.brightest(out, ["-ss", "1.96"]), 60)
+
+    @needs_imagemagick
+    def test_title_fade_must_fit(self):
+        with self.assertRaises(SystemExit) as caught:
+            vedit.main(["title", "x", "--seconds", "2", "--fade", "1.5", "-o", str(self.dir / "never_fade_title.mp4")])
+        self.assertIn("must fit", str(caught.exception.code))
+
+    @needs_imagemagick
     def test_title_with_an_unknown_color(self):
         # ImageMagick only prints a warning for an unknown color and exits with the code 0.
         for option in ("--bg", "--fg"):

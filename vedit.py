@@ -525,6 +525,8 @@ def cmd_title(a):
     out = Path(a.output) if a.output else Path("title.mp4")
     if not a.text.strip():
         fail("title text must not be empty")
+    if a.fade and a.fade * 2 > a.seconds:
+        fail("the fade in and the fade out must fit in the length of the card")
     check_color(a.bg)
     check_color(a.fg)
     font = ["-font", a.font] if a.font else []
@@ -543,11 +545,15 @@ def cmd_title(a):
              "-extent", f"{w}x{h}"],
             png, True,
         )
+        # The fade goes from black at the start and to black at the end of the card.
+        fade = []
+        if a.fade:
+            fade = ["-vf", f"fade=t=in:st=0:d={a.fade},fade=t=out:st={a.seconds - a.fade}:d={a.fade}"]
         # The silent audio track lets the title card join with clips that have sound.
         run_ffmpeg(
             ["-loop", "1", "-framerate", str(a.fps), "-i", ff(png),
              "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo",
-             "-t", str(a.seconds), "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac"],
+             "-t", str(a.seconds), *fade, "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac"],
             out, a.force,
         )
 
@@ -789,6 +795,8 @@ def build_parser():
     sp.add_argument("--fps", type=positive_int, default=25, help="frames per second of the card")
     sp.add_argument("--bg", default="black", help="background color")
     sp.add_argument("--fg", default="white", help="text color")
+    sp.add_argument("--fade", type=positive_number, metavar="SECONDS",
+                    help="fade in from black and fade out to black, each in this time")
     sp.add_argument("--font", help="font name from `magick -list font`, or the path of a font file")
 
     sp = add("sheet", cmd_sheet, "make a contact sheet of frames (needs ImageMagick)",
