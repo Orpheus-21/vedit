@@ -325,20 +325,19 @@ python3 vedit.py sheet clip.mp4 --labels
 
 vedit works on one file for each run. To change many files, use a loop of the shell.
 
-This example compresses each `.mp4` file in the current folder. It saves the results in the folder `small`:
+This example compresses each `.mp4` file in the current folder. The option `--output-dir` saves the results in the folder `small`. vedit makes the folder if it does not exist:
 
 ```
-mkdir small
-for f in *.mp4; do python3 vedit.py compress "$f" -o "small/$f"; done
+for f in *.mp4; do python3 vedit.py compress "$f" --output-dir small; done
 ```
 
 The loop does not read the folder `small`, so you can run it again. If a result file exists, vedit stops with an error for that file. The loop then goes on with the next file. Add `-f` to overwrite the results of an earlier run:
 
 ```
-for f in *.mp4; do python3 vedit.py -f compress "$f" -o "small/$f"; done
+for f in *.mp4; do python3 vedit.py -f compress "$f" --output-dir small; done
 ```
 
-Save the results in another folder. Without `-o`, vedit writes `clip_small.mp4` next to `clip.mp4`. The next run of the loop then also compresses `clip_small.mp4`.
+Without `--output-dir`, vedit writes `clip_small.mp4` next to `clip.mp4`. The next run of the loop then also compresses `clip_small.mp4`. Use `--output-dir` for batch work.
 
 ## Configuration
 
@@ -348,6 +347,7 @@ vedit has no configuration file. All settings are command-line options.
 |---|---|---|---|
 | `-o`, `--output` | all | see below | The path of the output file. |
 | `-f`, `--force` | all | off | Overwrites an output file that exists. You can write it before or after the command name. |
+| `--output-dir` | all | none | Saves the output files in this folder. vedit makes the folder if it does not exist. You cannot use it with `-o`. You can write it before or after the command name. |
 | `--dry-run` | all | off | Prints each `ffmpeg` and ImageMagick command and does not run it. You can write it before or after the command name. |
 | `--crossfade` | `join` | none | Fade time in seconds between clips. Use a number above 0. |
 | `--fast` | `trim` | off | Copies the streams and does not encode. The cut starts at the keyframe before the start time. |
@@ -386,7 +386,7 @@ vedit has no configuration file. All settings are command-line options.
 | `--rows` | `sheet` | 3 | Number of rows. Use 1 or more. |
 | `--width` | `sheet` | 320 | Largest width of each frame in pixels. vedit does not enlarge a clip. |
 
-Without `-o`, vedit writes the output next to the input file. The name is the name of the input, then an underscore, then a tag:
+Without `-o`, vedit writes the output next to the input file, or in the folder of `--output-dir`. The name is the name of the input, then an underscore, then a tag:
 
 | Command | Output name for `clip.mp4` |
 |---|---|
