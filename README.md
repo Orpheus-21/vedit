@@ -17,6 +17,7 @@ Each vedit command runs one `ffmpeg` or ImageMagick job. You give the command a 
 | `rotate` | Turns a clip 90, 180, or 270 degrees clockwise. |
 | `watermark` | Puts a logo on a clip. |
 | `crop` | Cuts away the edges of the picture. |
+| `reverse` | Plays a clip backward. |
 | `fade` | Fades a clip in from black, or out to black, with the sound. |
 | `audio` | Saves the sound of a clip as an audio file. |
 | `mute` | Removes the sound from a clip. |
@@ -185,6 +186,14 @@ python3 vedit.py crop clip.mp4 640 360
 python3 vedit.py crop clip.mp4 640 360 --x 0 --y 0
 ```
 
+### reverse
+
+Plays a clip backward, the picture and the sound. The `ffmpeg` filters hold the whole clip in memory, so use this command for short clips only.
+
+```
+python3 vedit.py reverse clip.mp4
+```
+
 ### fade
 
 Give `--fade-in`, `--fade-out`, or both. Each value is a time in seconds. The fades must fit in the length of the clip. The sound fades with the picture.
@@ -318,6 +327,7 @@ Without `-o`, vedit writes the output next to the input file. The name is the na
 | `rotate` | `clip_rot90.mp4` (the tag holds the degrees) |
 | `watermark` | `clip_mark.mp4` |
 | `crop` | `clip_crop.mp4` |
+| `reverse` | `clip_reverse.mp4` |
 | `fade` | `clip_fade.mp4` |
 | `audio` | `clip_audio.mp3` |
 | `mute` | `clip_mute.mp4` |
@@ -338,6 +348,7 @@ If a run fails, or you press Ctrl+C, vedit deletes the output file that the run 
 * H.264 needs an even width and an even height. The commands that encode cut off one pixel of an odd width or an odd height.
 * `join` gives every clip the size and the average frame rate of the first clip. The size is the size that a player shows, after the turn that the metadata gives. `join` adds black bars to keep the aspect ratio. If one clip has no sound, the output has no sound.
 * `speed` accepts a factor from 0.1 to 100.
+* `reverse` holds the whole clip in memory. A long clip can use all the memory of the computer.
 
 ## How it works
 
