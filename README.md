@@ -303,6 +303,12 @@ Takes one frame from the middle of each equal part of the clip. Then it puts the
 python3 vedit.py sheet clip.mp4 --cols 4 --rows 3
 ```
 
+Add `--labels` to write the time of each frame under the frame. The time has the form `M:SS`, or `H:MM:SS` for an hour or more.
+
+```
+python3 vedit.py sheet clip.mp4 --labels
+```
+
 ## Batch use
 
 vedit works on one file for each run. To change many files, use a loop of the shell.
@@ -360,6 +366,7 @@ vedit has no configuration file. All settings are command-line options.
 | `--font` | `title` | the ImageMagick default | Font name or path of a font file. vedit stops with an error for a font that ImageMagick cannot use. |
 | `--bg` | `title` | `black` | Background color. Any ImageMagick color works, for example `black` or `#336699`. vedit stops with an error for an unknown color. |
 | `--fg` | `title` | `white` | Text color. The rule for an unknown color is the same as for `--bg`. |
+| `--labels` | `sheet` | off | Writes the time of each frame under the frame. |
 | `--cols` | `sheet` | 4 | Number of columns. Use 1 or more. |
 | `--rows` | `sheet` | 3 | Number of rows. Use 1 or more. |
 | `--width` | `sheet` | 320 | Largest width of each frame in pixels. vedit does not enlarge a clip. |
