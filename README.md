@@ -84,6 +84,8 @@ python3 vedit.py COMMAND INPUT [options]
 
 Use `python3 vedit.py COMMAND --help` to see the options of one command. If you installed the command `vedit`, write `vedit` in place of `python3 vedit.py` in all examples.
 
+Use `python3 vedit.py --version` to see the version of vedit.
+
 Times are in seconds (`90`) or in the form `H:MM:SS` (`0:01:30.5`).
 
 ### trim
