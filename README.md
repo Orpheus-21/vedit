@@ -147,6 +147,12 @@ A higher `--crf` value gives a smaller file and lower quality. The value 18 is h
 python3 vedit.py compress clip.mp4 --crf 28
 ```
 
+Use `--preset` to set the speed of the encoder. The presets are `ultrafast`, `superfast`, `veryfast`, `faster`, `fast`, `medium`, `slow`, `slower`, and `veryslow`. A slower preset gives a smaller file and takes more time. Use `--max-height` to make a tall clip lower. vedit does not enlarge a clip that is lower than the limit.
+
+```
+python3 vedit.py compress clip.mp4 --preset slow --max-height 720
+```
+
 ### resize
 
 Give `--width`, `--height`, or both. Each value must be an even number. If you give one value, vedit keeps the aspect ratio.
@@ -342,6 +348,8 @@ vedit has no configuration file. All settings are command-line options.
 | `--fps` | `gif` | 12 | Frames per second of the GIF. Use 1 or more. |
 | `--width` | `gif` | 480 | Largest width of the GIF in pixels. vedit does not enlarge a clip. |
 | `--crf` | `compress` | 28 | Quality, from 0 to 51. A lower value gives higher quality. |
+| `--preset` | `compress` | `medium` | Speed of the encoder. A slower preset gives a smaller file. |
+| `--max-height` | `compress` | none | Largest height in pixels. Use 1 or more. vedit does not enlarge a clip. |
 | `--width`, `--height` | `resize` | none | New size in pixels. Give at least one. |
 | `--position` | `watermark` | `bottom-right` | Place of the logo. |
 | `--width` | `watermark` | 100 | Width of the logo in pixels. Use 1 or more. You cannot use it with `--scale`. |
