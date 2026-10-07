@@ -110,6 +110,12 @@ Joins two or more clips in the order you give them.
 python3 vedit.py join intro.mp4 main.mp4 outro.mp4
 ```
 
+Add `--crossfade` to fade from each clip to the next clip. The fade overlaps the clips. Three clips of 4 seconds with `--crossfade 1` give a video of 10 seconds. The fade must be shorter than each clip.
+
+```
+python3 vedit.py join intro.mp4 main.mp4 outro.mp4 --crossfade 1
+```
+
 ### speed
 
 Changes the speed. The factor 2 is twice as fast. The factor 0.5 is half speed. The factor must be from 0.5 to 100.
@@ -219,6 +225,7 @@ vedit has no configuration file. All settings are command-line options.
 | `-o`, `--output` | all | see below | The path of the output file. |
 | `-f`, `--force` | all | off | Overwrites an output file that exists. You can write it before or after the command name. |
 | `--dry-run` | all | off | Prints each `ffmpeg` and ImageMagick command and does not run it. You can write it before or after the command name. |
+| `--crossfade` | `join` | none | Fade time in seconds between clips. Use a number above 0. |
 | `--fast` | `trim` | off | Copies the streams and does not encode. The cut starts at the keyframe before the start time. |
 | `--fps` | `gif` | 12 | Frames per second of the GIF. Use 1 or more. |
 | `--width` | `gif` | 480 | Largest width of the GIF in pixels. vedit does not enlarge a clip. |
@@ -263,7 +270,7 @@ If a run fails, or you press Ctrl+C, vedit deletes the output file that the run 
 * `trim` encodes the video again. The cut is exact, but the command is slower than a stream copy. Use `--fast` for a stream copy.
 * The commands that encode the video write H.264 with the pixel format `yuv420p`. These commands are `trim`, `join`, `speed`, `compress`, `rotate`, and `watermark`.
 * H.264 needs an even width and an even height. The commands that encode cut off one pixel of an odd width or an odd height.
-* `join` gives every clip the size and the average frame rate of the first clip. The size is the size that a player shows, after the turn that the metadata gives. `join` adds black bars to keep the aspect ratio. It has no crossfade. If one clip has no sound, the output has no sound.
+* `join` gives every clip the size and the average frame rate of the first clip. The size is the size that a player shows, after the turn that the metadata gives. `join` adds black bars to keep the aspect ratio. If one clip has no sound, the output has no sound.
 * `speed` accepts a factor from 0.5 to 100.
 * `title` uses the default ImageMagick font. It has no option to change the font.
 
@@ -281,7 +288,7 @@ vedit passes the arguments as a list and never starts a shell. A file name with 
 
 Some commands use more than one step:
 
-* `join` probes the first clip with `ffprobe`. It reads the size, the turn in the metadata, and the average frame rate. Then it runs the `ffmpeg` concat filter with one scale and pad chain for each clip.
+* `join` probes the first clip with `ffprobe`. It reads the size, the turn in the metadata, and the average frame rate. Then it runs the `ffmpeg` concat filter, or the filters `xfade` and `acrossfade` for `--crossfade`, with one scale and pad chain for each clip.
 * `title` checks the two colors with ImageMagick, because ImageMagick only prints a warning for an unknown color. Then it draws the text into a PNG file. Then `ffmpeg` loops the PNG for the chosen time and adds silent audio. vedit escapes the characters `@` and `%` in the text, because ImageMagick gives them a special meaning.
 * `sheet` finds the length of the clip with `ffprobe`. Then `ffmpeg` saves the frames in a temporary folder. Then `montage` puts the frames in a grid.
 
