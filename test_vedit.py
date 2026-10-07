@@ -41,16 +41,26 @@ def streams(path):
 
 @needs_ffmpeg
 class VeditTest(unittest.TestCase):
-    def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
-        self.dir = Path(self.tmp.name)
-        # A 4 second clip with video and audio. The name has a space and a quote.
-        self.clip = self.dir / "my 'clip'.mp4"
+    @classmethod
+    def setUpClass(cls):
+        # One clip for all tests. The tests do not change it. The clip has video and audio,
+        # it is 4 seconds long, and its name has a space and a quote.
+        cls.clip_folder = tempfile.TemporaryDirectory()
+        cls.clip = Path(cls.clip_folder.name) / "my 'clip'.mp4"
         subprocess.run(
             ["ffmpeg", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=size=320x240:rate=25:duration=4",
-             "-f", "lavfi", "-i", "sine=duration=4", "-shortest", str(self.clip)],
+             "-f", "lavfi", "-i", "sine=duration=4", "-shortest", str(cls.clip)],
             check=True,
         )
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.clip_folder.cleanup()
+
+    def setUp(self):
+        # A new folder for the output files of each test.
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self.tmp.name)
 
     def tearDown(self):
         self.tmp.cleanup()
