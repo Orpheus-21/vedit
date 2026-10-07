@@ -373,64 +373,65 @@ def build_parser():
         return sp
 
     sp = add("trim", cmd_trim, "cut a clip between two times")
-    sp.add_argument("input")
+    sp.add_argument("input", help="the video file")
     sp.add_argument("start", help="start time, for example 10 or 0:01:30.5")
     sp.add_argument("end", nargs="?", help="end time (default: end of the clip)")
 
     sp = add("join", cmd_join, "join clips one after the other")
-    sp.add_argument("inputs", nargs="+", metavar="input")
+    sp.add_argument("inputs", nargs="+", metavar="input", help="the video files, in the order to join them")
 
     sp = add("speed", cmd_speed, "make a clip faster or slower")
-    sp.add_argument("input")
+    sp.add_argument("input", help="the video file")
     sp.add_argument("factor", type=float, help="2 is twice as fast, 0.5 is half speed")
 
     sp = add("gif", cmd_gif, "make a GIF from a clip")
-    sp.add_argument("input")
-    sp.add_argument("--fps", type=positive_int, default=12)
+    sp.add_argument("input", help="the video file")
+    sp.add_argument("--fps", type=positive_int, default=12, help="frames per second of the GIF")
     sp.add_argument("--width", type=positive_int, default=480, help="largest width in pixels, vedit does not enlarge a clip")
 
     sp = add("compress", cmd_compress, "make the file smaller (H.264)")
-    sp.add_argument("input")
+    sp.add_argument("input", help="the video file")
     sp.add_argument("--crf", type=crf_value, default=28, help="quality, 18 is high, 35 is low")
 
     sp = add("resize", cmd_resize, "change the size of a clip")
-    sp.add_argument("input")
+    sp.add_argument("input", help="the video file")
     sp.add_argument("--width", type=int, help="width in pixels, an even number")
     sp.add_argument("--height", type=int, help="height in pixels, an even number")
 
     sp = add("rotate", cmd_rotate, "turn a clip clockwise")
-    sp.add_argument("input")
-    sp.add_argument("degrees", type=int, choices=sorted(ROTATE_FILTERS))
+    sp.add_argument("input", help="the video file")
+    sp.add_argument("degrees", type=int, choices=sorted(ROTATE_FILTERS), help="the turn, clockwise")
 
     sp = add("watermark", cmd_watermark, "put a logo or image on a clip")
-    sp.add_argument("input")
+    sp.add_argument("input", help="the video file")
     sp.add_argument("image", help="logo file, for example a PNG with a clear background")
-    sp.add_argument("--position", choices=sorted(POSITIONS), default="bottom-right")
+    sp.add_argument("--position", choices=sorted(POSITIONS), default="bottom-right",
+                    help="place of the logo")
     sp.add_argument("--width", type=int, default=100, help="width of the logo in pixels")
     sp.add_argument("--margin", type=int, default=10, help="space to the edge in pixels")
 
     sp = add("audio", cmd_audio, "save the sound of a clip as an audio file")
-    sp.add_argument("input")
+    sp.add_argument("input", help="the video file")
 
     sp = add("mute", cmd_mute, "remove the sound from a clip")
-    sp.add_argument("input")
+    sp.add_argument("input", help="the video file")
 
     sp = add("frame", cmd_frame, "save one frame of a clip as an image")
-    sp.add_argument("input")
+    sp.add_argument("input", help="the video file")
     sp.add_argument("time", help="time of the frame, for example 5 or 0:01:30")
 
     sp = add("title", cmd_title, "make a title card video (needs ImageMagick)")
-    sp.add_argument("text")
-    sp.add_argument("--seconds", type=positive_number, default=3)
+    sp.add_argument("text", help="the text of the card, it must not be empty")
+    sp.add_argument("--seconds", type=positive_number, default=3, help="length of the card in seconds")
     sp.add_argument("--size", default="1280x720", help="WIDTHxHEIGHT, even numbers")
-    sp.add_argument("--fps", type=positive_int, default=25)
+    sp.add_argument("--fps", type=positive_int, default=25, help="frames per second of the card")
     sp.add_argument("--bg", default="black", help="background color")
     sp.add_argument("--fg", default="white", help="text color")
 
     sp = add("sheet", cmd_sheet, "make a contact sheet of frames (needs ImageMagick)")
-    sp.add_argument("input")
-    sp.add_argument("--cols", type=positive_int, default=4)
-    sp.add_argument("--rows", type=positive_int, default=3)
+    sp.add_argument("input", help="the video file")
+    sp.add_argument("--cols", type=positive_int, default=4, help="number of columns")
+    sp.add_argument("--rows", type=positive_int, default=3, help="number of rows")
     sp.add_argument("--width", type=positive_int, default=320, help="largest width of each frame in pixels, vedit does not enlarge a clip")
     return p
 

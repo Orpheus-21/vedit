@@ -558,6 +558,14 @@ class VeditTest(unittest.TestCase):
         self.assertEqual(caught.exception.code, 0)
         self.assertIn("ImageMagick", stdout.getvalue())
 
+    def test_every_option_has_help_text(self):
+        subparsers = vedit.build_parser()._subparsers._group_actions[0].choices
+        self.assertEqual(len(subparsers), 13)
+        for name, parser in subparsers.items():
+            for action in parser._actions:
+                with self.subTest(command=name, option=action.dest):
+                    self.assertTrue(action.help, f"{name} {action.dest} has no help text")
+
     def test_no_overwrite_without_force(self):
         out = self.dir / "o.mp4"
         out.write_text("x")
