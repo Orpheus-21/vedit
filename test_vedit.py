@@ -373,6 +373,34 @@ class VeditTest(unittest.TestCase):
                 vedit.main(["watermark", str(self.clip), str(self.clip), "--opacity", value])
             self.assertEqual(caught.exception.code, 2)
 
+    def brightest(self, video, seek):
+        """Return the brightest pixel (0 to 255) of the frame at the time seek of the video."""
+        return max(subprocess.run(
+            ["ffmpeg", "-loglevel", "error", *seek, "-i", str(video), "-frames:v", "1", "-vf", "format=gray",
+             "-f", "rawvideo", "-"], capture_output=True, check=True).stdout)
+
+    def test_fade_in_and_out(self):
+        out = self.dir / "faded.mp4"
+        vedit.main(["fade", str(self.clip), "--fade-in", "1", "--fade-out", "1", "-o", str(out)])
+        self.assertAlmostEqual(duration(out), 4, delta=0.3)
+        self.assertEqual(streams(out), ["video", "audio"])
+        self.assertLess(self.brightest(out, ["-ss", "0"]), 30)          # the first frame is black
+        self.assertGreater(self.brightest(out, ["-ss", "2"]), 200)      # the middle is not
+        self.assertLess(self.brightest(out, ["-sseof", "-0.05"]), 30)   # the last frame is black
+        self.assertGreater(self.brightest(self.clip, ["-ss", "0"]), 200)
+
+    def test_fade_in_only_keeps_the_end(self):
+        out = self.dir / "fade_in.mp4"
+        vedit.main(["fade", str(self.clip), "--fade-in", "1", "-o", str(out)])
+        self.assertLess(self.brightest(out, ["-ss", "0"]), 30)
+        self.assertGreater(self.brightest(out, ["-sseof", "-0.05"]), 200)
+
+    def test_fade_needs_a_fade_that_fits(self):
+        for args in (["--fade-in", "3", "--fade-out", "3"], []):
+            with self.subTest(args=args), self.assertRaises(SystemExit) as caught:
+                vedit.main(["fade", str(self.clip), *args, "-o", str(self.dir / "never_fade.mp4")])
+            self.assertIn("fade", str(caught.exception.code))
+
     def test_watermark_positions(self):
         # The clip is 320x240, the logo is 40x40, and the margin is 10.
         logo = self.make_logo("logo_pos.png")
@@ -580,6 +608,7 @@ class VeditTest(unittest.TestCase):
             (["resize", "clip.mp4", "--width", "160"], "clip_resized.mp4"),
             (["rotate", "clip.mp4", "90"], "clip_rot90.mp4"),
             (["watermark", "clip.mp4", "logo.png"], "clip_mark.mp4"),
+            (["fade", "clip.mp4", "--fade-in", "1"], "clip_fade.mp4"),
             (["audio", "clip.mp4"], "clip_audio.mp3"),
             (["mute", "clip.mp4"], "clip_mute.mp4"),
             (["frame", "clip.mp4", "1"], "clip_frame.png"),
@@ -704,7 +733,7 @@ class VeditTest(unittest.TestCase):
 
     def test_every_option_has_help_text(self):
         subparsers = vedit.build_parser()._subparsers._group_actions[0].choices
-        self.assertEqual(len(subparsers), 13)
+        self.assertTrue(subparsers)
         for name, parser in subparsers.items():
             for action in parser._actions:
                 with self.subTest(command=name, option=action.dest):

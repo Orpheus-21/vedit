@@ -259,6 +259,28 @@ def cmd_compress(a):
     )
 
 
+def cmd_fade(a):
+    if a.fade_in is None and a.fade_out is None:
+        fail("give --fade-in or --fade-out")
+    src = check_input(a.input)
+    out = resolve_out(a, src, "fade")
+    length = video_duration(src)
+    fade_in, fade_out = a.fade_in or 0, a.fade_out or 0
+    if fade_in + fade_out > length:
+        fail("the fades are longer than the clip")
+    video, sound = [EVEN], []
+    if fade_in:
+        video.append(f"fade=t=in:st=0:d={fade_in}")
+        sound.append(f"afade=t=in:st=0:d={fade_in}")
+    if fade_out:
+        video.append(f"fade=t=out:st={length - fade_out}:d={fade_out}")
+        sound.append(f"afade=t=out:st={length - fade_out}:d={fade_out}")
+    args = ["-i", ff(src), "-vf", ",".join(video), *PIX_FMT]
+    if sound:
+        args += ["-af", ",".join(sound)]
+    run_ffmpeg(args, out, a.force)
+
+
 def cmd_audio(a):
     src = check_input(a.input)
     out = resolve_out(a, src, "audio", ".mp3")
@@ -505,6 +527,12 @@ def build_parser():
     sp.add_argument("--margin", type=int, default=10, help="space to the edge in pixels")
     sp.add_argument("--opacity", type=fraction, default=1,
                     help="how solid the logo is, above 0 and at most 1, 1 is solid")
+
+    sp = add("fade", cmd_fade, "fade a clip in from black, or out to black, with the sound",
+             "vedit fade clip.mp4 --fade-in 1 --fade-out 2")
+    sp.add_argument("input", help="the video file")
+    sp.add_argument("--fade-in", type=positive_number, metavar="SECONDS", help="length of the fade in from black")
+    sp.add_argument("--fade-out", type=positive_number, metavar="SECONDS", help="length of the fade out to black")
 
     sp = add("audio", cmd_audio, "save the sound of a clip as an audio file",
             "vedit audio clip.mp4 -o sound.wav")
