@@ -118,7 +118,7 @@ python3 vedit.py join intro.mp4 main.mp4 outro.mp4 --crossfade 1
 
 ### speed
 
-Changes the speed. The factor 2 is twice as fast. The factor 0.5 is half speed. The factor must be from 0.5 to 100.
+Changes the speed. The factor 2 is twice as fast. The factor 0.5 is half speed. The factor must be from 0.1 to 100.
 
 ```
 python3 vedit.py speed clip.mp4 2
@@ -278,7 +278,7 @@ If a run fails, or you press Ctrl+C, vedit deletes the output file that the run 
 * The commands that encode the video write H.264 with the pixel format `yuv420p`. These commands are `trim`, `join`, `speed`, `compress`, `rotate`, and `watermark`.
 * H.264 needs an even width and an even height. The commands that encode cut off one pixel of an odd width or an odd height.
 * `join` gives every clip the size and the average frame rate of the first clip. The size is the size that a player shows, after the turn that the metadata gives. `join` adds black bars to keep the aspect ratio. If one clip has no sound, the output has no sound.
-* `speed` accepts a factor from 0.5 to 100.
+* `speed` accepts a factor from 0.1 to 100.
 
 ## How it works
 
