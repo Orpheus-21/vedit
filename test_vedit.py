@@ -297,14 +297,17 @@ class VeditTest(unittest.TestCase):
         vedit.main(["rotate", str(self.clip), "90", "-o", str(out)])
         self.assertEqual(video_size(out), "240x320")
 
-    def is_red(self, video, x, y):
-        """Return True if the pixel at x, y in the first frame is red."""
-        pixel = subprocess.run(
+    def pixel(self, video, x, y):
+        """Return the color (red, green, blue) of the pixel at x, y in the first frame."""
+        return tuple(subprocess.run(
             ["ffmpeg", "-loglevel", "error", "-i", str(video), "-frames:v", "1",
              "-vf", f"format=rgb24,crop=1:1:{x}:{y}", "-f", "rawvideo", "-"],
             capture_output=True, check=True,
-        ).stdout
-        red, green, blue = pixel
+        ).stdout)
+
+    def is_red(self, video, x, y):
+        """Return True if the pixel at x, y in the first frame is red."""
+        red, green, blue = self.pixel(video, x, y)
         return red > 204 and green < 77 and blue < 77
 
     def make_logo(self, name):
@@ -328,6 +331,27 @@ class VeditTest(unittest.TestCase):
         vedit.main(["watermark", str(self.clip), str(logo), "--width", "40", "-o", str(bottom)])
         self.assertTrue(self.is_red(bottom, 290, 210))
         self.assertFalse(self.is_red(bottom, 20, 20))
+
+    def test_watermark_opacity(self):
+        logo = self.make_logo("logo_opacity.png")
+        before = self.pixel(self.clip, 30, 30)
+        half = self.dir / "half.mp4"
+        vedit.main(["watermark", str(self.clip), str(logo), "--width", "40", "--position", "top-left",
+                    "--opacity", "0.5", "-o", str(half)])
+        # Half of the logo and half of the video: red (255, 0, 0) mixed with the pixel before.
+        for found, video_value, logo_value in zip(self.pixel(half, 30, 30), before, (255, 0, 0)):
+            self.assertAlmostEqual(found, (video_value + logo_value) / 2, delta=30)
+        solid = self.dir / "solid.mp4"
+        vedit.main(["watermark", str(self.clip), str(logo), "--width", "40", "--position", "top-left",
+                    "-o", str(solid)])
+        self.assertTrue(self.is_red(solid, 30, 30))
+
+    def test_watermark_opacity_must_be_above_0(self):
+        for value in ("0", "1.5", "-1"):
+            with self.subTest(value=value), contextlib.redirect_stderr(io.StringIO()), \
+                    self.assertRaises(SystemExit) as caught:
+                vedit.main(["watermark", str(self.clip), str(self.clip), "--opacity", value])
+            self.assertEqual(caught.exception.code, 2)
 
     def test_watermark_positions(self):
         # The clip is 320x240, the logo is 40x40, and the margin is 10.

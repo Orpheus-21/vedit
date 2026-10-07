@@ -317,7 +317,9 @@ def cmd_watermark(a):
     logo = check_input(a.image)
     out = resolve_out(a, src, "mark")
     pos = POSITIONS[a.position].format(m=a.margin)
-    graph = f"[0:v]{EVEN}[base];[1:v]scale={a.width}:-1[wm];[base][wm]overlay={pos}[v]"
+    # The filter colorchannelmixer makes the logo transparent. It needs a format with an alpha channel.
+    fade = f",format=rgba,colorchannelmixer=aa={a.opacity}" if a.opacity < 1 else ""
+    graph = f"[0:v]{EVEN}[base];[1:v]scale={a.width}:-1{fade}[wm];[base][wm]overlay={pos}[v]"
     run_ffmpeg(
         ["-i", ff(src), "-i", ff(logo), "-filter_complex", graph,
          "-map", "[v]", "-map", "0:a?", *PIX_FMT, "-c:a", "copy"],
@@ -417,6 +419,14 @@ class HelpFormatter(argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescript
         return super()._get_help_string(action)
 
 
+def fraction(text):
+    """An argparse type for a number above 0 and up to 1."""
+    value = float(text)
+    if not 0 < value <= 1:
+        raise argparse.ArgumentTypeError("must be above 0 and at most 1")
+    return value
+
+
 def build_parser():
     p = argparse.ArgumentParser(prog="vedit", description="Simple video edits with ffmpeg and ImageMagick.",
                                 formatter_class=HelpFormatter)
@@ -486,6 +496,8 @@ def build_parser():
                     help="place of the logo")
     sp.add_argument("--width", type=int, default=100, help="width of the logo in pixels")
     sp.add_argument("--margin", type=int, default=10, help="space to the edge in pixels")
+    sp.add_argument("--opacity", type=fraction, default=1,
+                    help="how solid the logo is, above 0 and at most 1, 1 is solid")
 
     sp = add("audio", cmd_audio, "save the sound of a clip as an audio file",
             "vedit audio clip.mp4 -o sound.wav")
