@@ -346,6 +346,26 @@ class VeditTest(unittest.TestCase):
                     "-o", str(solid)])
         self.assertTrue(self.is_red(solid, 30, 30))
 
+    def test_watermark_scale_and_the_default_width(self):
+        logo = self.make_logo("logo_scale.png")
+        # The clip is 320 pixels wide and the margin is 10. The logo starts at x = 10.
+        for options, last_red, first_clear in (
+            (["--scale", "0.25"], 88, 94),   # 80 pixels, so x from 10 to 89
+            ([], 108, 114),                  # the default of 100 pixels, so x from 10 to 109
+            (["--width", "40"], 48, 54),     # 40 pixels, so x from 10 to 49
+        ):
+            with self.subTest(options=options):
+                out = self.dir / f"scale{len(options)}{last_red}.mp4"
+                vedit.main(["watermark", str(self.clip), str(logo), "--position", "top-left",
+                            *options, "-o", str(out)])
+                self.assertTrue(self.is_red(out, last_red, 30))
+                self.assertFalse(self.is_red(out, first_clear, 30))
+
+    def test_watermark_width_and_scale_exclude_each_other(self):
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as caught:
+            vedit.main(["watermark", str(self.clip), str(self.clip), "--width", "40", "--scale", "0.2"])
+        self.assertEqual(caught.exception.code, 2)
+
     def test_watermark_opacity_must_be_above_0(self):
         for value in ("0", "1.5", "-1"):
             with self.subTest(value=value), contextlib.redirect_stderr(io.StringIO()), \

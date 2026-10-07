@@ -311,15 +311,20 @@ POSITIONS = {
 
 
 def cmd_watermark(a):
-    if a.width < 1 or a.margin < 0:
-        fail("width must be 1 or more and margin must be 0 or more")
+    if a.margin < 0:
+        fail("margin must be 0 or more")
     src = check_input(a.input)
     logo = check_input(a.image)
+    if a.scale:
+        # The width of the logo is a share of the width that a player shows.
+        width = max(1, round(a.scale * video_format(src)[0]))
+    else:
+        width = a.width or 100
     out = resolve_out(a, src, "mark")
     pos = POSITIONS[a.position].format(m=a.margin)
     # The filter colorchannelmixer makes the logo transparent. It needs a format with an alpha channel.
     fade = f",format=rgba,colorchannelmixer=aa={a.opacity}" if a.opacity < 1 else ""
-    graph = f"[0:v]{EVEN}[base];[1:v]scale={a.width}:-1{fade}[wm];[base][wm]overlay={pos}[v]"
+    graph = f"[0:v]{EVEN}[base];[1:v]scale={width}:-1{fade}[wm];[base][wm]overlay={pos}[v]"
     run_ffmpeg(
         ["-i", ff(src), "-i", ff(logo), "-filter_complex", graph,
          "-map", "[v]", "-map", "0:a?", *PIX_FMT, "-c:a", "copy"],
@@ -494,7 +499,9 @@ def build_parser():
     sp.add_argument("image", help="logo file, for example a PNG with a clear background")
     sp.add_argument("--position", choices=sorted(POSITIONS), default="bottom-right",
                     help="place of the logo")
-    sp.add_argument("--width", type=int, default=100, help="width of the logo in pixels")
+    size = sp.add_mutually_exclusive_group()
+    size.add_argument("--width", type=positive_int, help="width of the logo in pixels, 100 if you give no size")
+    size.add_argument("--scale", type=fraction, help="width of the logo as a share of the video width, for example 0.15")
     sp.add_argument("--margin", type=int, default=10, help="space to the edge in pixels")
     sp.add_argument("--opacity", type=fraction, default=1,
                     help="how solid the logo is, above 0 and at most 1, 1 is solid")
