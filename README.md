@@ -17,6 +17,7 @@ Each vedit command runs one `ffmpeg` or ImageMagick job. You give the command a 
 | `rotate` | Turns a clip 90, 180, or 270 degrees clockwise. |
 | `watermark` | Puts a logo on a clip. |
 | `crop` | Cuts away the edges of the picture. |
+| `subtitles` | Burns subtitles from an `.srt` file into the picture. |
 | `loop` | Plays a clip again and again, the number of times you give. |
 | `reverse` | Plays a clip backward. |
 | `fade` | Fades a clip in from black, or out to black, with the sound. |
@@ -31,7 +32,7 @@ Each vedit command runs one `ffmpeg` or ImageMagick job. You give the command a 
 ## Requirements
 
 * Python 3.9 or later. The tests pass on Python 3.9, 3.10, 3.11, 3.12, 3.13, and 3.14. The tests also pass on Python 3.8, and `python3 vedit.py` runs there. The install as a command needs Python 3.9, because the build needs `setuptools` 77. I could not test Python 3.7.
-* `ffmpeg` and `ffprobe`. The `ffmpeg` build must include the encoders `libx264`, `aac`, and `libmp3lame`. The tests ran on `ffmpeg` 9.0.1 and on `ffmpeg` 6.1.
+* `ffmpeg` and `ffprobe`. The `ffmpeg` build must include the encoders `libx264`, `aac`, and `libmp3lame`. The command `subtitles` also needs the filter `subtitles`. The tests ran on `ffmpeg` 9.0.1 and on `ffmpeg` 6.1.
 * ImageMagick. The commands `title` and `sheet` need it. The other commands do not. The tests ran on ImageMagick 7.1.2 and on ImageMagick 6.9. If the command `magick` is missing, vedit uses the ImageMagick 6 commands `convert` and `montage`.
 * Linux. The tests ran on Linux. I do not know if vedit works on other systems.
 
@@ -187,6 +188,14 @@ python3 vedit.py crop clip.mp4 640 360
 python3 vedit.py crop clip.mp4 640 360 --x 0 --y 0
 ```
 
+### subtitles
+
+Draws the text of an `.srt` file into the picture. The command needs an `ffmpeg` build with the filter `subtitles`, which uses the library `libass`. The text has the default style and the default font of `libass`.
+
+```
+python3 vedit.py subtitles clip.mp4 clip.srt
+```
+
 ### loop
 
 Gives the number of times that the clip plays in total. The count 3 gives a clip that is three times as long. The command copies the streams and does not encode them.
@@ -336,6 +345,7 @@ Without `-o`, vedit writes the output next to the input file. The name is the na
 | `rotate` | `clip_rot90.mp4` (the tag holds the degrees) |
 | `watermark` | `clip_mark.mp4` |
 | `crop` | `clip_crop.mp4` |
+| `subtitles` | `clip_subs.mp4` |
 | `loop` | `clip_loop.mp4` |
 | `reverse` | `clip_reverse.mp4` |
 | `fade` | `clip_fade.mp4` |
