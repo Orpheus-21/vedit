@@ -163,6 +163,15 @@ def video_format(src):
         fail(f"cannot read the video stream of {src}")
 
 
+def require_filter(name, library):
+    """Stop if this ffmpeg has no filter with this name. The library is the build option that adds it."""
+    if shutil.which("ffmpeg") is None:
+        fail("ffmpeg is not installed or not in PATH")
+    filters = subprocess.run(["ffmpeg", "-hide_banner", "-filters"], capture_output=True, text=True).stdout
+    if not re.search(rf"\s{name}\s", filters):
+        fail(f"this ffmpeg has no {name} filter. It needs the library {library}")
+
+
 def has_sound(src):
     return bool(ffprobe(src, "stream=codec_type", "csv=p=0", "a:0"))
 
@@ -312,6 +321,21 @@ def cmd_loop(a):
     out = resolve_out(a, src, "loop")
     # The option -stream_loop gives the number of extra plays. A stream copy does not encode.
     run_ffmpeg(["-stream_loop", str(a.count - 1), "-i", ff(src), "-c", "copy"], out, a.force)
+
+
+def cmd_subtitles(a):
+    src = check_input(a.input)
+    subs = check_input(a.subtitles)
+    out = resolve_out(a, src, "subs")
+    require_filter("subtitles", "libass")
+    with tempfile.TemporaryDirectory() as tmp:
+        # A copy with a plain name avoids the escape rules of ffmpeg for a path in a filter.
+        copy = Path(tmp) / "subs.srt"
+        shutil.copyfile(subs, copy)
+        if not re.fullmatch(r"[A-Za-z0-9_./-]+", str(copy)):
+            fail(f"the name of the temporary folder has a character that a filter cannot read: {tmp}")
+        run_ffmpeg(["-i", ff(src), "-vf", f"{EVEN},subtitles='{copy}'", *PIX_FMT, "-c:a", "copy"],
+                   out, a.force)
 
 
 def cmd_audio(a):
@@ -593,6 +617,11 @@ def build_parser():
     sp.add_argument("height", type=positive_int, help="height of the cut in pixels, an even number")
     sp.add_argument("--x", type=non_negative_int, help="left edge of the cut in pixels, the center if you give none")
     sp.add_argument("--y", type=non_negative_int, help="top edge of the cut in pixels, the center if you give none")
+
+    sp = add("subtitles", cmd_subtitles, "burn subtitles from an .srt file into the picture",
+             "vedit subtitles clip.mp4 clip.srt")
+    sp.add_argument("input", help="the video file")
+    sp.add_argument("subtitles", help="the subtitle file in the SRT format")
 
     sp = add("loop", cmd_loop, "play a clip again and again, the number of times you give", "vedit loop clip.mp4 3")
     sp.add_argument("input", help="the video file")

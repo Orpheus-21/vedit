@@ -429,6 +429,30 @@ class VeditTest(unittest.TestCase):
     def difference(self, first, second):
         return sum(abs(one - two) for one, two in zip(first, second)) / len(first)
 
+    @unittest.skipUnless(
+        shutil.which("ffmpeg") and re.search(
+            r"\ssubtitles\s", subprocess.run(["ffmpeg", "-hide_banner", "-filters"],
+                                               capture_output=True, text=True).stdout),
+        "ffmpeg has no subtitles filter")
+    def test_subtitles(self):
+        srt = self.dir / "my 'subs'.srt"
+        srt.write_text("1\n00:00:01,000 --> 00:00:03,000\nHELLO SUBTITLES\n")
+        out = self.dir / "subbed.mp4"
+        vedit.main(["subtitles", str(self.clip), str(srt), "-o", str(out)])
+        self.assertAlmostEqual(duration(out), 4, delta=0.3)
+        self.assertEqual(streams(out), ["video", "audio"])
+        # Before the subtitle starts, the picture is almost the same. While it shows, the picture changes more.
+        before = self.difference(self.small_frame(out, ["-ss", "0.5"]), self.small_frame(self.clip, ["-ss", "0.5"]))
+        during = self.difference(self.small_frame(out, ["-ss", "2"]), self.small_frame(self.clip, ["-ss", "2"]))
+        self.assertGreater(during, before + 0.4)
+
+    def test_a_missing_filter_gives_a_clear_error(self):
+        listing = mock.Mock(stdout=" ... xfade V->V Cross fade.\n")
+        with mock.patch("vedit.subprocess.run", return_value=listing), self.assertRaises(SystemExit) as caught:
+            vedit.require_filter("subtitles", "libass")
+        self.assertIn("no subtitles filter", str(caught.exception.code))
+        self.assertIn("libass", str(caught.exception.code))
+
     def test_loop(self):
         for count, length in (("3", 12), ("1", 4)):
             with self.subTest(count=count):
