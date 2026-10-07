@@ -375,6 +375,57 @@ def cmd_text(a):
         run_ffmpeg(["-i", ff(src), "-vf", f"{EVEN},{draw}", *PIX_FMT, "-c:a", "copy"], out, a.force)
 
 
+def find_silences(src, threshold, min_length, length):
+    """Return the silent parts of a clip as a list of (start, end) times in seconds."""
+    detect = subprocess.run(
+        ["ffmpeg", "-hide_banner", "-nostats", "-i", ff(src), "-vn",
+         "-af", f"silencedetect=noise={threshold}dB:d={min_length}", "-f", "null", "-"],
+        capture_output=True, text=True)
+    silences, start = [], None
+    for line in detect.stderr.splitlines():
+        if "silence_start:" in line:
+            start = max(0.0, float(line.split("silence_start:")[1]))
+        elif "silence_end:" in line and start is not None:
+            silences.append((start, float(line.split("silence_end:")[1].split("|")[0])))
+            start = None
+    if start is not None:
+        # The clip ends in silence, so ffmpeg prints no silence_end.
+        silences.append((start, length))
+    return silences
+
+
+def cmd_silence(a):
+    src = check_input(a.input)
+    if not has_sound(src):
+        fail(f"the clip has no sound: {src}")
+    out = resolve_out(a, src, "nosilence")
+    length = video_duration(src)
+    silences = find_silences(src, a.threshold, a.min_length, length)
+    if not silences:
+        fail("no silence found, so there is nothing to remove")
+    # The parts to keep are the parts between the silent parts.
+    keep, position = [], 0.0
+    for start, end in silences:
+        if start > position:
+            keep.append((position, start))
+        position = end
+    if position < length:
+        keep.append((position, length))
+    if not keep:
+        fail("the whole clip is silent")
+    # ponytail: one filter graph with a trim for each part, so a clip with very many pauses
+    # makes a very long command line. Use a filter script file if that limit matters.
+    parts, labels = [], ""
+    for i, (start, end) in enumerate(keep):
+        parts.append(f"[0:v]trim=start={start:.3f}:end={end:.3f},setpts=PTS-STARTPTS[v{i}]")
+        parts.append(f"[0:a]atrim=start={start:.3f}:end={end:.3f},asetpts=PTS-STARTPTS[a{i}]")
+        labels += f"[v{i}][a{i}]"
+    parts.append(f"{labels}concat=n={len(keep)}:v=1:a=1[vc][a]")
+    parts.append(f"[vc]{EVEN}[v]")
+    run_ffmpeg(["-i", ff(src), "-filter_complex", ";".join(parts), "-map", "[v]", "-map", "[a]", *PIX_FMT],
+               out, a.force)
+
+
 def cmd_audio(a):
     src = check_input(a.input)
     out = resolve_out(a, src, "audio", ".mp3")
@@ -540,6 +591,14 @@ def non_negative_int(text):
     return value
 
 
+def negative_number(text):
+    """An argparse type for a number below 0."""
+    value = float(text)
+    if not value < 0:  # This also stops nan.
+        raise argparse.ArgumentTypeError("must be below 0")
+    return value
+
+
 def non_negative_number(text):
     """An argparse type for a number of 0 or more."""
     value = float(text)
@@ -662,6 +721,13 @@ def build_parser():
     sp.add_argument("height", type=positive_int, help="height of the cut in pixels, an even number")
     sp.add_argument("--x", type=non_negative_int, help="left edge of the cut in pixels, the center if you give none")
     sp.add_argument("--y", type=non_negative_int, help="top edge of the cut in pixels, the center if you give none")
+
+    sp = add("silence", cmd_silence, "cut out the silent parts of a clip", "vedit silence clip.mp4 --threshold -30")
+    sp.add_argument("input", help="the video file")
+    sp.add_argument("--threshold", type=negative_number, default=-30, metavar="DB",
+                    help="sounds quieter than this level, in dB, are silence")
+    sp.add_argument("--min-length", type=positive_number, default=0.5, metavar="SECONDS",
+                    help="a quiet part must be at least this long to count as silence")
 
     sp = add("text", cmd_text, "write text on a clip, for the whole clip or for a time",
              'vedit text clip.mp4 "Hello" --position top-left --from 1 --to 3')

@@ -489,6 +489,50 @@ class VeditTest(unittest.TestCase):
             vedit.main(["text", str(self.clip), "  ", "-o", str(self.dir / "never_text.mp4")])
         self.assertIn("must not be empty", str(caught.exception.code))
 
+    def make_clip_with_silence(self, name, parts):
+        """Make a clip with a picture and a sound. The parts are a list of 'tone' or 'quiet', 2 seconds each."""
+        out = self.dir / name
+        sound = "".join(f"[{i + 1}]" for i in range(len(parts)))
+        inputs = ["-f", "lavfi", "-i", f"testsrc=size=320x240:rate=25:duration={2 * len(parts)}"]
+        for part in parts:
+            inputs += ["-f", "lavfi", "-i",
+                       "sine=duration=2" if part == "tone" else "anullsrc=r=44100:cl=mono:d=2"]
+        subprocess.run(
+            ["ffmpeg", "-loglevel", "error", *inputs, "-filter_complex",
+             f"{sound}concat=n={len(parts)}:v=0:a=1[a]", "-map", "0:v", "-map", "[a]", "-shortest", str(out)],
+            check=True)
+        return out
+
+    def test_silence_in_the_middle_and_at_the_edges(self):
+        for parts, length in ((["tone", "quiet", "tone"], 4), (["quiet", "tone", "quiet"], 2),
+                              (["tone", "quiet", "tone", "quiet", "tone"], 6)):
+            with self.subTest(parts=parts):
+                clip = self.make_clip_with_silence(f"silent_{len(parts)}_{parts[0]}.mp4", parts)
+                out = self.dir / f"nosilence_{len(parts)}_{parts[0]}.mp4"
+                vedit.main(["silence", str(clip), "-o", str(out)])
+                self.assertAlmostEqual(duration(out), length, delta=0.5)
+                self.assertEqual(streams(out), ["video", "audio"])
+                self.assertAlmostEqual(float(probe(out, "stream=duration", select="a:0")), length, delta=0.5)
+
+    def test_silence_needs_silence_and_sound(self):
+        silent = self.dir / "quiet_s.mp4"
+        vedit.main(["mute", str(self.clip), "-o", str(silent)])
+        always_quiet = self.make_clip_with_silence("always_quiet.mp4", ["quiet", "quiet"])
+        for clip, message in ((self.clip, "no silence found"), (silent, "has no sound"),
+                              (always_quiet, "whole clip is silent")):
+            with self.subTest(message=message), self.assertRaises(SystemExit) as caught:
+                vedit.main(["silence", str(clip), "-o", str(self.dir / "never_silence.mp4")])
+            self.assertIn(message, str(caught.exception.code))
+
+    def test_silence_threshold_and_length(self):
+        clip = self.make_clip_with_silence("one_pause.mp4", ["tone", "quiet", "tone"])
+        # A pause of 2 seconds is not silence if the minimum is 3 seconds.
+        with self.assertRaises(SystemExit):
+            vedit.main(["silence", str(clip), "--min-length", "3", "-o", str(self.dir / "never_len.mp4")])
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as caught:
+            vedit.main(["silence", str(clip), "--threshold", "5"])
+        self.assertEqual(caught.exception.code, 2)
+
     def test_loop(self):
         for count, length in (("3", 12), ("1", 4)):
             with self.subTest(count=count):
