@@ -16,6 +16,7 @@ Each vedit command runs one `ffmpeg` or ImageMagick job. You give the command a 
 | `resize` | Changes the width, the height, or both. |
 | `rotate` | Turns a clip 90, 180, or 270 degrees clockwise. |
 | `watermark` | Puts a logo on a clip. |
+| `crop` | Cuts away the edges of the picture. |
 | `fade` | Fades a clip in from black, or out to black, with the sound. |
 | `audio` | Saves the sound of a clip as an audio file. |
 | `mute` | Removes the sound from a clip. |
@@ -175,6 +176,15 @@ Use `--opacity` to make the logo transparent. The value 1 is solid. The value 0.
 python3 vedit.py watermark clip.mp4 logo.png --opacity 0.5
 ```
 
+### crop
+
+Gives the width and the height of the part to keep. Both numbers must be even. Without `--x` and `--y`, the part is in the center of the picture. `--x` and `--y` are the left edge and the top edge of the part, in pixels. The part must be inside the video.
+
+```
+python3 vedit.py crop clip.mp4 640 360
+python3 vedit.py crop clip.mp4 640 360 --x 0 --y 0
+```
+
 ### fade
 
 Give `--fade-in`, `--fade-out`, or both. Each value is a time in seconds. The fades must fit in the length of the clip. The sound fades with the picture.
@@ -281,6 +291,8 @@ vedit has no configuration file. All settings are command-line options.
 | `--scale` | `watermark` | none | Width of the logo as a share of the video width. Use a number above 0 and at most 1. |
 | `--margin` | `watermark` | 10 | Space between the logo and the edge in pixels. Use 0 or more. |
 | `--opacity` | `watermark` | 1 | How solid the logo is. Use a number above 0 and at most 1. |
+| `--x` | `crop` | the center | Left edge of the part to keep, in pixels. Use 0 or more. |
+| `--y` | `crop` | the center | Top edge of the part to keep, in pixels. Use 0 or more. |
 | `--fade-in` | `fade` | none | Length of the fade in from black, in seconds. Use a number above 0. |
 | `--fade-out` | `fade` | none | Length of the fade out to black, in seconds. Use a number above 0. |
 | `--seconds` | `title` | 3 | Length of the title card in seconds. Use a number above 0. |
@@ -305,6 +317,7 @@ Without `-o`, vedit writes the output next to the input file. The name is the na
 | `resize` | `clip_resized.mp4` |
 | `rotate` | `clip_rot90.mp4` (the tag holds the degrees) |
 | `watermark` | `clip_mark.mp4` |
+| `crop` | `clip_crop.mp4` |
 | `fade` | `clip_fade.mp4` |
 | `audio` | `clip_audio.mp3` |
 | `mute` | `clip_mute.mp4` |
