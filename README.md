@@ -19,6 +19,8 @@ Each vedit command runs one `ffmpeg` or ImageMagick job. You give the command a 
 | `fade` | Fades a clip in from black, or out to black, with the sound. |
 | `audio` | Saves the sound of a clip as an audio file. |
 | `mute` | Removes the sound from a clip. |
+| `volume` | Makes the sound louder or quieter. |
+| `normalize` | Sets the loudness of the sound to -16 LUFS. |
 | `frame` | Saves one frame of a clip as an image. |
 | `title` | Makes a title card video from text. |
 | `sheet` | Makes a contact sheet: a grid of frames from a clip. |
@@ -195,6 +197,22 @@ python3 vedit.py audio clip.mp4 -o sound.wav
 python3 vedit.py mute clip.mp4
 ```
 
+### volume
+
+Multiplies the sound by a factor. The factor 2 is twice the volume. The factor 0.5 is half the volume. The command copies the video stream. It stops with an error for a clip with no sound.
+
+```
+python3 vedit.py volume clip.mp4 1.5
+```
+
+### normalize
+
+Sets the loudness of the sound to -16 LUFS. The command runs one pass of the `ffmpeg` filter `loudnorm`, and sets the sample rate to 48000 Hz. It copies the video stream. It stops with an error for a clip with no sound.
+
+```
+python3 vedit.py normalize clip.mp4
+```
+
 ### frame
 
 ```
@@ -290,6 +308,8 @@ Without `-o`, vedit writes the output next to the input file. The name is the na
 | `fade` | `clip_fade.mp4` |
 | `audio` | `clip_audio.mp3` |
 | `mute` | `clip_mute.mp4` |
+| `volume` | `clip_volume.mp4` |
+| `normalize` | `clip_norm.mp4` |
 | `frame` | `clip_frame.png` |
 | `sheet` | `clip_sheet.jpg` |
 | `title` | `title.mp4` in the current folder |
