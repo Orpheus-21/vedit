@@ -26,8 +26,10 @@ def fail(message):
     sys.exit(f"vedit: error: {message}")
 
 
-def default_out(src, tag, ext=None):
-    """Return the output path: <name>_<tag>.<ext> next to the input file."""
+def resolve_out(a, src, tag, ext=None):
+    """Return the output path: the value of -o, or <name>_<tag>.<ext> next to the input file."""
+    if a.output:
+        return Path(a.output)
     return src.with_name(f"{src.stem}_{tag}{ext or src.suffix}")
 
 
@@ -138,7 +140,7 @@ def video_format(src):
 
 def cmd_trim(a):
     src = check_input(a.input)
-    out = Path(a.output) if a.output else default_out(src, "trim")
+    out = resolve_out(a, src, "trim")
     # ponytail: re-encodes for exact cuts, add a --fast stream copy mode if speed matters
     # Both times come before -i, so ffmpeg jumps to the start and does not decode the clip before it.
     # The cut stays exact, because ffmpeg encodes the clip again.
@@ -150,7 +152,7 @@ def cmd_trim(a):
 
 def cmd_join(a):
     srcs = [check_input(p) for p in a.inputs]
-    out = Path(a.output) if a.output else default_out(srcs[0], "joined")
+    out = resolve_out(a, srcs[0], "joined")
     # Every clip gets the size and the frame rate of the first clip. Black bars keep the aspect ratio.
     w, h, fps = video_format(srcs[0])
     w, h = w - w % 2, h - h % 2
@@ -175,7 +177,7 @@ def cmd_speed(a):
     if not 0.5 <= a.factor <= 100:
         fail("factor must be from 0.5 to 100")
     src = check_input(a.input)
-    out = Path(a.output) if a.output else default_out(src, f"x{a.factor:g}")
+    out = resolve_out(a, src, f"x{a.factor:g}")
     run_ffmpeg(
         ["-i", ff(src), "-vf", f"setpts=PTS/{a.factor},{EVEN}", *PIX_FMT, "-af", f"atempo={a.factor}"],
         out, a.force,
@@ -184,7 +186,7 @@ def cmd_speed(a):
 
 def cmd_gif(a):
     src = check_input(a.input)
-    out = Path(a.output) if a.output else default_out(src, "gif", ".gif")
+    out = resolve_out(a, src, "gif", ".gif")
     graph = (
         f"fps={a.fps},scale='min({a.width},iw)':-1:flags=lanczos,"
         "split[a][b];[a]palettegen[p];[b][p]paletteuse"
@@ -194,7 +196,7 @@ def cmd_gif(a):
 
 def cmd_compress(a):
     src = check_input(a.input)
-    out = Path(a.output) if a.output else default_out(src, "small", ".mp4")
+    out = resolve_out(a, src, "small", ".mp4")
     run_ffmpeg(
         ["-i", ff(src), "-vf", EVEN, *PIX_FMT, "-c:v", "libx264", "-crf", str(a.crf), "-preset", "medium",
          "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart"],
@@ -204,20 +206,20 @@ def cmd_compress(a):
 
 def cmd_audio(a):
     src = check_input(a.input)
-    out = Path(a.output) if a.output else default_out(src, "audio", ".mp3")
+    out = resolve_out(a, src, "audio", ".mp3")
     # ffmpeg picks the audio format from the output extension: .mp3, .wav, .m4a, .flac
     run_ffmpeg(["-i", ff(src), "-vn"], out, a.force)
 
 
 def cmd_mute(a):
     src = check_input(a.input)
-    out = Path(a.output) if a.output else default_out(src, "mute")
+    out = resolve_out(a, src, "mute")
     run_ffmpeg(["-i", ff(src), "-an", "-c:v", "copy"], out, a.force)
 
 
 def cmd_frame(a):
     src = check_input(a.input)
-    out = Path(a.output) if a.output else default_out(src, "frame", ".png")
+    out = resolve_out(a, src, "frame", ".png")
     run_ffmpeg(["-ss", a.time, "-i", ff(src), "-frames:v", "1"], out, a.force)
 
 
@@ -229,7 +231,7 @@ def cmd_resize(a):
         if value is not None and (value <= 0 or value % 2):
             fail("width and height must be even numbers above 0")
     src = check_input(a.input)
-    out = Path(a.output) if a.output else default_out(src, "resized")
+    out = resolve_out(a, src, "resized")
     scale = f"scale={a.width or -2}:{a.height or -2}"
     run_ffmpeg(["-i", ff(src), "-vf", scale, "-c:a", "copy"], out, a.force)
 
@@ -239,7 +241,7 @@ ROTATE_FILTERS = {90: "transpose=1", 180: "hflip,vflip", 270: "transpose=2"}
 
 def cmd_rotate(a):
     src = check_input(a.input)
-    out = Path(a.output) if a.output else default_out(src, f"rot{a.degrees}")
+    out = resolve_out(a, src, f"rot{a.degrees}")
     run_ffmpeg(["-i", ff(src), "-vf", f"{ROTATE_FILTERS[a.degrees]},{EVEN}", *PIX_FMT, "-c:a", "copy"], out, a.force)
 
 
@@ -258,7 +260,7 @@ def cmd_watermark(a):
         fail("width must be 1 or more and margin must be 0 or more")
     src = check_input(a.input)
     logo = check_input(a.image)
-    out = Path(a.output) if a.output else default_out(src, "mark")
+    out = resolve_out(a, src, "mark")
     pos = POSITIONS[a.position].replace("M", str(a.margin))
     graph = f"[0:v]{EVEN}[base];[1:v]scale={a.width}:-1[wm];[base][wm]overlay={pos}[v]"
     run_ffmpeg(
@@ -302,7 +304,7 @@ def cmd_title(a):
 
 def cmd_sheet(a):
     src = check_input(a.input)
-    out = Path(a.output) if a.output else default_out(src, "sheet", ".jpg")
+    out = resolve_out(a, src, "sheet", ".jpg")
     if out.exists() and not a.force:
         fail(f"output exists: {out} (use --force to overwrite)")
     count = a.cols * a.rows
