@@ -17,6 +17,7 @@ Each vedit command runs one `ffmpeg` or ImageMagick job. You give the command a 
 | `rotate` | Turns a clip 90, 180, or 270 degrees clockwise. |
 | `watermark` | Puts a logo on a clip. |
 | `crop` | Cuts away the edges of the picture. |
+| `silence` | Cuts out the silent parts of a clip. |
 | `text` | Writes text on a clip, for the whole clip or for a time. |
 | `subtitles` | Burns subtitles from an `.srt` file into the picture. |
 | `loop` | Plays a clip again and again, the number of times you give. |
@@ -189,6 +190,14 @@ python3 vedit.py crop clip.mp4 640 360
 python3 vedit.py crop clip.mp4 640 360 --x 0 --y 0
 ```
 
+### silence
+
+Finds the parts of the clip that are quieter than `--threshold` for at least `--min-length` seconds. It cuts these parts out and joins the rest. The command stops with an error if it finds no silence. It also stops for a clip with no sound.
+
+```
+python3 vedit.py silence clip.mp4 --threshold -30 --min-length 0.5
+```
+
 ### text
 
 Writes a text on the picture. `--position` is `top-left`, `top-center`, `top-right`, `center`, `bottom-left`, `bottom-center`, or `bottom-right`. `--from` and `--to` set the times in seconds when the text shows. The command needs an `ffmpeg` build with the filter `drawtext`. The text uses the default font of `ffmpeg`.
@@ -331,6 +340,8 @@ vedit has no configuration file. All settings are command-line options.
 | `--y` | `crop` | the center | Top edge of the part to keep, in pixels. Use 0 or more. |
 | `--fade-in` | `fade` | none | Length of the fade in from black, in seconds. Use a number above 0. |
 | `--fade-out` | `fade` | none | Length of the fade out to black, in seconds. Use a number above 0. |
+| `--threshold` | `silence` | -30 | Level in dB. Sound quieter than this level is silence. Use a number below 0. |
+| `--min-length` | `silence` | 0.5 | Shortest silence in seconds that vedit cuts out. Use a number above 0. |
 | `--position` | `text` | `bottom-center` | Place of the text. |
 | `--size` | `text` | 36 | Height of the letters in pixels. |
 | `--color` | `text` | `white` | Color of the text. Use an `ffmpeg` color name or `0xRRGGBB`. This is not an ImageMagick color. |
@@ -359,6 +370,7 @@ Without `-o`, vedit writes the output next to the input file. The name is the na
 | `rotate` | `clip_rot90.mp4` (the tag holds the degrees) |
 | `watermark` | `clip_mark.mp4` |
 | `crop` | `clip_crop.mp4` |
+| `silence` | `clip_nosilence.mp4` |
 | `text` | `clip_text.mp4` |
 | `subtitles` | `clip_subs.mp4` |
 | `loop` | `clip_loop.mp4` |
@@ -383,6 +395,7 @@ If a run fails, or you press Ctrl+C, vedit deletes the output file that the run 
 * H.264 needs an even width and an even height. The commands that encode cut off one pixel of an odd width or an odd height.
 * `join` gives every clip the size and the average frame rate of the first clip. The size is the size that a player shows, after the turn that the metadata gives. `join` adds black bars to keep the aspect ratio. If one clip has no sound, the output has no sound.
 * `speed` accepts a factor from 0.1 to 100.
+* `silence` builds one command line with a cut for each part to keep. A clip with several hundred pauses can make the command line too long.
 * `reverse` holds the whole clip in memory. A long clip can use all the memory of the computer.
 
 ## How it works
