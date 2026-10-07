@@ -17,6 +17,7 @@ Each vedit command runs one `ffmpeg` or ImageMagick job. You give the command a 
 | `rotate` | Turns a clip 90, 180, or 270 degrees clockwise. |
 | `watermark` | Puts a logo on a clip. |
 | `crop` | Cuts away the edges of the picture. |
+| `stabilize` | Makes a shaky clip steadier. |
 | `silence` | Cuts out the silent parts of a clip. |
 | `text` | Writes text on a clip, for the whole clip or for a time. |
 | `subtitles` | Burns subtitles from an `.srt` file into the picture. |
@@ -34,7 +35,7 @@ Each vedit command runs one `ffmpeg` or ImageMagick job. You give the command a 
 ## Requirements
 
 * Python 3.9 or later. The tests pass on Python 3.9, 3.10, 3.11, 3.12, 3.13, and 3.14. The tests also pass on Python 3.8, and `python3 vedit.py` runs there. The install as a command needs Python 3.9, because the build needs `setuptools` 77. I could not test Python 3.7.
-* `ffmpeg` and `ffprobe`. The `ffmpeg` build must include the encoders `libx264`, `aac`, and `libmp3lame`. The command `subtitles` needs the filter `subtitles`. The command `text` needs the filter `drawtext`. The tests ran on `ffmpeg` 9.0.1 and on `ffmpeg` 6.1.
+* `ffmpeg` and `ffprobe`. The `ffmpeg` build must include the encoders `libx264`, `aac`, and `libmp3lame`. The command `subtitles` needs the filter `subtitles`. The command `text` needs the filter `drawtext`. The command `stabilize` needs the filters `vidstabdetect` and `vidstabtransform`. The tests ran on `ffmpeg` 9.0.1 and on `ffmpeg` 6.1.
 * ImageMagick. The commands `title` and `sheet` need it. The other commands do not. The tests ran on ImageMagick 7.1.2 and on ImageMagick 6.9. If the command `magick` is missing, vedit uses the ImageMagick 6 commands `convert` and `montage`.
 * Linux. The tests ran on Linux. I do not know if vedit works on other systems.
 
@@ -194,6 +195,14 @@ Gives the width and the height of the part to keep. Both numbers must be even. W
 ```
 python3 vedit.py crop clip.mp4 640 360
 python3 vedit.py crop clip.mp4 640 360 --x 0 --y 0
+```
+
+### stabilize
+
+Makes a shaky clip steadier. The command runs two passes. The first pass measures the motion of the picture. The second pass moves each frame against that motion. The command needs an `ffmpeg` build with the library `libvidstab`. It stops with an error if the filters are missing.
+
+```
+python3 vedit.py stabilize clip.mp4
 ```
 
 ### silence
@@ -399,6 +408,7 @@ Without `-o`, vedit writes the output next to the input file, or in the folder o
 | `rotate` | `clip_rot90.mp4` (the tag holds the degrees) |
 | `watermark` | `clip_mark.mp4` |
 | `crop` | `clip_crop.mp4` |
+| `stabilize` | `clip_stable.mp4` |
 | `silence` | `clip_nosilence.mp4` |
 | `text` | `clip_text.mp4` |
 | `subtitles` | `clip_subs.mp4` |
