@@ -285,6 +285,23 @@ python3 -m unittest
 
 A GitHub Actions workflow runs the same command on every push and pull request. The workflow file is `.github/workflows/test.yml`.
 
+## Contributing
+
+Open an issue or a pull request at https://github.com/Orpheus-21/vedit. Before you send a pull request, run the tests:
+
+```
+python3 -m unittest
+```
+
+Follow these rules:
+
+* Add one test for each new command and for each fix.
+* Make one commit for each change.
+* Write the subject of a commit in the imperative, for example `Add the crop command`.
+* Change the README if the change changes the behavior.
+
+The GitHub Actions workflow runs the tests on every pull request.
+
 ## License
 
 GPL version 3 or any later version. See the file `LICENSE`.
