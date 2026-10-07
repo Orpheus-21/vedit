@@ -3,6 +3,7 @@ import contextlib
 import io
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -565,6 +566,21 @@ class VeditTest(unittest.TestCase):
             for action in parser._actions:
                 with self.subTest(command=name, option=action.dest):
                     self.assertTrue(action.help, f"{name} {action.dest} has no help text")
+
+    def test_help_shows_defaults_and_a_working_example(self):
+        gif_help = vedit.build_parser()._subparsers._group_actions[0].choices["gif"].format_help()
+        self.assertIn("(default: 12)", gif_help)
+        self.assertIn("example:\n  vedit gif clip.mp4", gif_help)
+        subparsers = vedit.build_parser()._subparsers._group_actions[0].choices
+        for name, parser in subparsers.items():
+            with self.subTest(command=name):
+                text = parser.format_help()
+                self.assertNotIn("(default: None)", text)
+                self.assertNotIn("(default: False)", text)
+                # The example in the help text must be a valid command line.
+                example = shlex.split(parser.epilog.splitlines()[-1])
+                self.assertEqual(example[:2], ["vedit", name])
+                self.assertEqual(vedit.build_parser().parse_args(example[1:]).command, name)
 
     def test_no_overwrite_without_force(self):
         out = self.dir / "o.mp4"

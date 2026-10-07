@@ -358,13 +358,25 @@ def crf_value(text):
     return value
 
 
+class HelpFormatter(argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescriptionHelpFormatter):
+    """Show the default value of an option. Keep the line breaks of the example."""
+
+    def _get_help_string(self, action):
+        # An option without a value, and an option with no default, have nothing to show.
+        if action.default is None or action.default is False or action.default is argparse.SUPPRESS:
+            return action.help
+        return super()._get_help_string(action)
+
+
 def build_parser():
-    p = argparse.ArgumentParser(prog="vedit", description="Simple video edits with ffmpeg and ImageMagick.")
+    p = argparse.ArgumentParser(prog="vedit", description="Simple video edits with ffmpeg and ImageMagick.",
+                                formatter_class=HelpFormatter)
     p.add_argument("-f", "--force", action="store_true", help="overwrite the output file")
     sub = p.add_subparsers(dest="command", required=True)
 
-    def add(name, func, help_text):
-        sp = sub.add_parser(name, help=help_text, description=help_text)
+    def add(name, func, help_text, example):
+        sp = sub.add_parser(name, help=help_text, description=help_text, formatter_class=HelpFormatter,
+                            epilog=f"example:\n  {example}")
         sp.add_argument("-o", "--output", help="output file (default: next to the input)")
         # SUPPRESS keeps the value that -f before the command name set.
         sp.add_argument("-f", "--force", action="store_true", default=argparse.SUPPRESS,
@@ -372,37 +384,45 @@ def build_parser():
         sp.set_defaults(func=func)
         return sp
 
-    sp = add("trim", cmd_trim, "cut a clip between two times")
+    sp = add("trim", cmd_trim, "cut a clip between two times",
+            "vedit trim clip.mp4 10 25")
     sp.add_argument("input", help="the video file")
     sp.add_argument("start", help="start time, for example 10 or 0:01:30.5")
     sp.add_argument("end", nargs="?", help="end time (default: end of the clip)")
 
-    sp = add("join", cmd_join, "join clips one after the other")
+    sp = add("join", cmd_join, "join clips one after the other",
+            "vedit join intro.mp4 main.mp4 outro.mp4")
     sp.add_argument("inputs", nargs="+", metavar="input", help="the video files, in the order to join them")
 
-    sp = add("speed", cmd_speed, "make a clip faster or slower")
+    sp = add("speed", cmd_speed, "make a clip faster or slower",
+            "vedit speed clip.mp4 2")
     sp.add_argument("input", help="the video file")
     sp.add_argument("factor", type=float, help="2 is twice as fast, 0.5 is half speed")
 
-    sp = add("gif", cmd_gif, "make a GIF from a clip")
+    sp = add("gif", cmd_gif, "make a GIF from a clip",
+            "vedit gif clip.mp4 --fps 12 --width 480")
     sp.add_argument("input", help="the video file")
     sp.add_argument("--fps", type=positive_int, default=12, help="frames per second of the GIF")
     sp.add_argument("--width", type=positive_int, default=480, help="largest width in pixels, vedit does not enlarge a clip")
 
-    sp = add("compress", cmd_compress, "make the file smaller (H.264)")
+    sp = add("compress", cmd_compress, "make the file smaller (H.264)",
+            "vedit compress clip.mp4 --crf 28")
     sp.add_argument("input", help="the video file")
     sp.add_argument("--crf", type=crf_value, default=28, help="quality, 18 is high, 35 is low")
 
-    sp = add("resize", cmd_resize, "change the size of a clip")
+    sp = add("resize", cmd_resize, "change the size of a clip",
+            "vedit resize clip.mp4 --width 1280")
     sp.add_argument("input", help="the video file")
     sp.add_argument("--width", type=int, help="width in pixels, an even number")
     sp.add_argument("--height", type=int, help="height in pixels, an even number")
 
-    sp = add("rotate", cmd_rotate, "turn a clip clockwise")
+    sp = add("rotate", cmd_rotate, "turn a clip clockwise",
+            "vedit rotate clip.mp4 90")
     sp.add_argument("input", help="the video file")
     sp.add_argument("degrees", type=int, choices=sorted(ROTATE_FILTERS), help="the turn, clockwise")
 
-    sp = add("watermark", cmd_watermark, "put a logo or image on a clip")
+    sp = add("watermark", cmd_watermark, "put a logo or image on a clip",
+            "vedit watermark clip.mp4 logo.png --position bottom-right --width 100")
     sp.add_argument("input", help="the video file")
     sp.add_argument("image", help="logo file, for example a PNG with a clear background")
     sp.add_argument("--position", choices=sorted(POSITIONS), default="bottom-right",
@@ -410,17 +430,21 @@ def build_parser():
     sp.add_argument("--width", type=int, default=100, help="width of the logo in pixels")
     sp.add_argument("--margin", type=int, default=10, help="space to the edge in pixels")
 
-    sp = add("audio", cmd_audio, "save the sound of a clip as an audio file")
+    sp = add("audio", cmd_audio, "save the sound of a clip as an audio file",
+            "vedit audio clip.mp4 -o sound.wav")
     sp.add_argument("input", help="the video file")
 
-    sp = add("mute", cmd_mute, "remove the sound from a clip")
+    sp = add("mute", cmd_mute, "remove the sound from a clip",
+            "vedit mute clip.mp4")
     sp.add_argument("input", help="the video file")
 
-    sp = add("frame", cmd_frame, "save one frame of a clip as an image")
+    sp = add("frame", cmd_frame, "save one frame of a clip as an image",
+            "vedit frame clip.mp4 5")
     sp.add_argument("input", help="the video file")
     sp.add_argument("time", help="time of the frame, for example 5 or 0:01:30")
 
-    sp = add("title", cmd_title, "make a title card video (needs ImageMagick)")
+    sp = add("title", cmd_title, "make a title card video (needs ImageMagick)",
+            'vedit title "My Holiday" --seconds 3')
     sp.add_argument("text", help="the text of the card, it must not be empty")
     sp.add_argument("--seconds", type=positive_number, default=3, help="length of the card in seconds")
     sp.add_argument("--size", default="1280x720", help="WIDTHxHEIGHT, even numbers")
@@ -428,7 +452,8 @@ def build_parser():
     sp.add_argument("--bg", default="black", help="background color")
     sp.add_argument("--fg", default="white", help="text color")
 
-    sp = add("sheet", cmd_sheet, "make a contact sheet of frames (needs ImageMagick)")
+    sp = add("sheet", cmd_sheet, "make a contact sheet of frames (needs ImageMagick)",
+            "vedit sheet clip.mp4 --cols 4 --rows 3")
     sp.add_argument("input", help="the video file")
     sp.add_argument("--cols", type=positive_int, default=4, help="number of columns")
     sp.add_argument("--rows", type=positive_int, default=3, help="number of rows")
