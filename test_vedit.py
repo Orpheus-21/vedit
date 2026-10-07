@@ -49,6 +49,9 @@ def ffmpeg_has_filter(name):
 
 
 needs_drawtext = unittest.skipUnless(ffmpeg_has_filter("drawtext"), "ffmpeg has no drawtext filter")
+needs_vidstab = unittest.skipUnless(
+    ffmpeg_has_filter("vidstabdetect") and ffmpeg_has_filter("vidstabtransform"),
+    "ffmpeg has no vidstab filters")
 needs_subtitles = unittest.skipUnless(ffmpeg_has_filter("subtitles"), "ffmpeg has no subtitles filter")
 
 
@@ -573,6 +576,38 @@ class VeditTest(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as caught:
             vedit.main(["silence", str(clip), "--threshold", "5"])
         self.assertEqual(caught.exception.code, 2)
+
+    def motion(self, video):
+        """Return the mean difference between two frames that follow each other, as 64x48 gray pixels."""
+        raw = subprocess.run(
+            ["ffmpeg", "-loglevel", "error", "-i", str(video), "-vf", "scale=64:48,format=gray",
+             "-f", "rawvideo", "-"], capture_output=True, check=True).stdout
+        size = 64 * 48
+        frames = [raw[i:i + size] for i in range(0, len(raw) - size + 1, size)]
+        steps = [self.difference(first, second) for first, second in zip(frames, frames[1:])]
+        return sum(steps) / len(steps)
+
+    @needs_vidstab
+    def test_stabilize(self):
+        # A still picture of color bars, cut out at a place that moves from frame to frame.
+        shaky = self.dir / "shaky.mp4"
+        subprocess.run(
+            ["ffmpeg", "-loglevel", "error", "-f", "lavfi", "-i", "smptebars=size=360x270:rate=25:duration=4",
+             "-vf", "crop=w=320:h=240:x='20+15*sin(n*1.7)':y='15+12*cos(n*2.3)'", str(shaky)],
+            check=True,
+        )
+        out = self.dir / "steady.mp4"
+        vedit.main(["stabilize", str(shaky), "-o", str(out)])
+        self.assertEqual(video_size(out), "320x240")
+        self.assertAlmostEqual(duration(out), 4, delta=0.3)
+        self.assertGreater(self.motion(shaky), 5)
+        self.assertLess(self.motion(out), self.motion(shaky) / 4)
+
+    def test_stabilize_needs_the_vidstab_filters(self):
+        listing = mock.Mock(stdout=" ... xfade V->V Cross fade.\n")
+        with mock.patch("vedit.subprocess.run", return_value=listing), self.assertRaises(SystemExit) as caught:
+            vedit.main(["stabilize", str(self.clip), "-o", str(self.dir / "never_stable.mp4")])
+        self.assertIn("libvidstab", str(caught.exception.code))
 
     def test_loop(self):
         for count, length in (("3", 12), ("1", 4)):

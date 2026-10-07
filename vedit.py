@@ -3,6 +3,7 @@
 Needs Python 3 and ffmpeg. The commands title and sheet also need ImageMagick."""
 import argparse
 import json
+import os
 import re
 import shlex
 import shutil
@@ -445,6 +446,23 @@ def cmd_silence(a):
                out, a.force)
 
 
+def cmd_stabilize(a):
+    src = check_input(a.input)
+    out = resolve_out(a, src, "stable")
+    require_filter("vidstabdetect", "libvidstab")
+    require_filter("vidstabtransform", "libvidstab")
+    with tempfile.TemporaryDirectory() as tmp:
+        motion = Path(tmp) / "motion.trf"
+        if not re.fullmatch(r"[A-Za-z0-9_./-]+", str(motion)):
+            fail(f"the name of the temporary folder has a character that a filter cannot read: {tmp}")
+        # Pass 1 measures the motion of the picture and writes it to a file. It writes no video.
+        run_tool(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", ff(src),
+                  "-vf", f"vidstabdetect=result='{motion}'", "-f", "null", "-"], Path(os.devnull), "ffmpeg")
+        # Pass 2 moves each frame against the measured motion.
+        run_ffmpeg(["-i", ff(src), "-vf", f"vidstabtransform=input='{motion}',{EVEN}", *PIX_FMT, "-c:a", "copy"],
+                   out, a.force)
+
+
 def cmd_audio(a):
     src = check_input(a.input)
     out = resolve_out(a, src, "audio", ".mp3")
@@ -782,6 +800,10 @@ def build_parser():
     sp.add_argument("height", type=positive_int, help="height of the cut in pixels, an even number")
     sp.add_argument("--x", type=non_negative_int, help="left edge of the cut in pixels, the center if you give none")
     sp.add_argument("--y", type=non_negative_int, help="top edge of the cut in pixels, the center if you give none")
+
+    sp = add("stabilize", cmd_stabilize, "make a shaky clip steadier, it needs ffmpeg with libvidstab",
+             "vedit stabilize clip.mp4")
+    sp.add_argument("input", help="the video file")
 
     sp = add("silence", cmd_silence, "cut out the silent parts of a clip", "vedit silence clip.mp4 --threshold -30")
     sp.add_argument("input", help="the video file")
