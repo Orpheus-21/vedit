@@ -60,8 +60,10 @@ def run_tool(cmd, out, name):
         fail(f"{name} failed")
 
 
-def run_ffmpeg(args, out, force, quiet=False):
-    """Run ffmpeg with an argument list."""
+def run_ffmpeg(args, out, force, pattern=False):
+    """Run ffmpeg with an argument list.
+    If pattern is true, out is a file name pattern for many files, for example %03d.png.
+    Then vedit does not look for one output file and prints no message."""
     if shutil.which("ffmpeg") is None:
         fail("ffmpeg is not installed or not in PATH")
     # Each value that follows -i is an input path. The prefix file: is not part of the path.
@@ -71,7 +73,7 @@ def run_ffmpeg(args, out, force, quiet=False):
     check_output(out, force)
     run_tool(["ffmpeg", "-hide_banner", "-loglevel", "error", "-stats", "-y", *args, ff(out)],
              out, "ffmpeg")
-    if not quiet:
+    if not pattern:
         # ffmpeg can exit with code 0 and write nothing, for example for a time after the end.
         if not out.exists():
             fail(f"ffmpeg wrote no output: {out}")
@@ -317,7 +319,7 @@ def cmd_sheet(a):
         run_ffmpeg(
             ["-ss", str(length / (2 * count)), "-i", ff(src),
              "-vf", f"fps={count}/{length},scale='min({a.width},iw)':-1", "-frames:v", str(count)],
-            Path(tmp) / "%03d.png", True, quiet=True,
+            Path(tmp) / "%03d.png", True, pattern=True,
         )
         frames = sorted(Path(tmp).glob("*.png"))
         run_magick(
