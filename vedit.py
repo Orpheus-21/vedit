@@ -217,13 +217,24 @@ def cmd_join(a):
     run_ffmpeg([*inputs, "-filter_complex", ";".join(parts), *maps, *PIX_FMT], out, a.force)
 
 
+def atempo_chain(factor):
+    """Return the atempo filters for a factor. One atempo filter takes a factor from 0.5 to 100,
+    so a factor below 0.5 needs more than one filter. For example, 0.25 is atempo=0.5,atempo=0.5."""
+    filters = []
+    while factor < 0.5:
+        filters.append("atempo=0.5")
+        factor /= 0.5
+    filters.append(f"atempo={factor:.6g}")
+    return ",".join(filters)
+
+
 def cmd_speed(a):
-    if not 0.5 <= a.factor <= 100:
-        fail("factor must be from 0.5 to 100")
+    if not 0.1 <= a.factor <= 100:
+        fail("factor must be from 0.1 to 100")
     src = check_input(a.input)
     out = resolve_out(a, src, f"x{a.factor:g}")
     run_ffmpeg(
-        ["-i", ff(src), "-vf", f"setpts=PTS/{a.factor},{EVEN}", *PIX_FMT, "-af", f"atempo={a.factor}"],
+        ["-i", ff(src), "-vf", f"setpts=PTS/{a.factor},{EVEN}", *PIX_FMT, "-af", atempo_chain(a.factor)],
         out, a.force,
     )
 
@@ -443,7 +454,7 @@ def build_parser():
     sp = add("speed", cmd_speed, "make a clip faster or slower",
             "vedit speed clip.mp4 2")
     sp.add_argument("input", help="the video file")
-    sp.add_argument("factor", type=float, help="2 is twice as fast, 0.5 is half speed")
+    sp.add_argument("factor", type=float, help="2 is twice as fast, 0.5 is half speed, from 0.1 to 100")
 
     sp = add("gif", cmd_gif, "make a GIF from a clip",
             "vedit gif clip.mp4 --fps 12 --width 480")

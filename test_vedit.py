@@ -115,11 +115,26 @@ class VeditTest(unittest.TestCase):
         self.assertAlmostEqual(duration(out), 3, delta=0.2)
 
     def test_speed_factor_out_of_range(self):
-        for factor in ("0.25", "101"):
+        for factor in ("0.05", "101"):
             with self.subTest(factor=factor), self.assertRaises(SystemExit) as caught:
                 vedit.main(["speed", str(self.clip), factor, "-o", str(self.dir / "never.mp4")])
-            self.assertIn("from 0.5 to 100", str(caught.exception.code))
+            self.assertIn("from 0.1 to 100", str(caught.exception.code))
             self.assertFalse((self.dir / "never.mp4").exists())
+
+    def test_atempo_chain(self):
+        self.assertEqual(vedit.atempo_chain(2), "atempo=2")
+        self.assertEqual(vedit.atempo_chain(0.5), "atempo=0.5")
+        self.assertEqual(vedit.atempo_chain(0.25), "atempo=0.5,atempo=0.5")
+        self.assertEqual(vedit.atempo_chain(0.1), "atempo=0.5,atempo=0.5,atempo=0.5,atempo=0.8")
+
+    def test_speed_below_half_speed(self):
+        for factor, length in (("0.25", 16), ("0.3", 13.3)):
+            with self.subTest(factor=factor):
+                out = self.dir / f"slow{factor}.mp4"
+                vedit.main(["speed", str(self.clip), factor, "-o", str(out)])
+                self.assertAlmostEqual(duration(out), length, delta=0.6)
+                # The sound is slowed down by the same factor.
+                self.assertAlmostEqual(float(probe(out, "stream=duration", select="a:0")), length, delta=0.6)
 
     def test_speed_on_a_clip_with_no_sound(self):
         silent = self.dir / "quiet.mp4"
