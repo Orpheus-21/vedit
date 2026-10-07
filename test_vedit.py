@@ -90,6 +90,24 @@ class VeditTest(unittest.TestCase):
         vedit.main(["trim", str(sparse), "3", "-o", str(to_end)])
         self.assertAlmostEqual(duration(to_end), 1, delta=0.1)
 
+    def test_trim_fast_copies_the_streams(self):
+        # A yuv444p clip keeps its pixel format only if ffmpeg does not encode it again.
+        wide = self.dir / "wide_fast.mp4"
+        subprocess.run(
+            ["ffmpeg", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=size=320x240:rate=25:duration=4",
+             "-f", "lavfi", "-i", "sine=duration=4", "-pix_fmt", "yuv444p", "-c:v", "libx264", "-g", "25",
+             "-shortest", str(wide)],
+            check=True,
+        )
+        fast = self.dir / "fast.mp4"
+        vedit.main(["trim", str(wide), "1", "3", "--fast", "-o", str(fast)])
+        self.assertEqual(probe(fast, "stream=pix_fmt", select="v:0"), "yuv444p")
+        # The keyframes are 1 second apart and the cut is on a keyframe.
+        self.assertAlmostEqual(duration(fast), 2, delta=0.3)
+        exact = self.dir / "exact.mp4"
+        vedit.main(["trim", str(wide), "1", "3", "-o", str(exact)])
+        self.assertEqual(probe(exact, "stream=pix_fmt", select="v:0"), "yuv420p")
+
     def test_trim_without_an_end_time_goes_to_the_end(self):
         out = self.dir / "te2.mp4"
         vedit.main(["trim", str(self.clip), "1", "-o", str(out)])

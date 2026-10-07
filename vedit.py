@@ -159,13 +159,16 @@ def video_format(src):
 def cmd_trim(a):
     src = check_input(a.input)
     out = resolve_out(a, src, "trim")
-    # ponytail: re-encodes for exact cuts, add a --fast stream copy mode if speed matters
     # Both times come before -i, so ffmpeg jumps to the start and does not decode the clip before it.
-    # The cut stays exact, because ffmpeg encodes the clip again.
     args = ["-ss", a.start]
     if a.end:
         args += ["-to", a.end]
-    run_ffmpeg([*args, "-i", ff(src), "-vf", EVEN, *PIX_FMT], out, a.force)
+    if a.fast:
+        # A stream copy does not encode. The cut moves to the nearest keyframe before the start time.
+        run_ffmpeg([*args, "-i", ff(src), "-c", "copy"], out, a.force)
+    else:
+        # The cut is exact, because ffmpeg encodes the clip again.
+        run_ffmpeg([*args, "-i", ff(src), "-vf", EVEN, *PIX_FMT], out, a.force)
 
 
 def cmd_join(a):
@@ -402,6 +405,8 @@ def build_parser():
     sp.add_argument("input", help="the video file")
     sp.add_argument("start", help="start time, for example 10 or 0:01:30.5")
     sp.add_argument("end", nargs="?", help="end time (default: end of the clip)")
+    sp.add_argument("--fast", action="store_true",
+                    help="copy the streams and do not encode, the cut starts at the keyframe before the start time")
 
     sp = add("join", cmd_join, "join clips one after the other",
             "vedit join intro.mp4 main.mp4 outro.mp4")
