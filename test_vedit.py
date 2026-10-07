@@ -22,6 +22,25 @@ needs_imagemagick = unittest.skipUnless(
     "ImageMagick is not installed")
 
 
+def ffmpeg_report(path, audio_filter, pattern):
+    """Run an ffmpeg audio filter that measures the sound. Return the number that the pattern finds."""
+    report = subprocess.run(
+        ["ffmpeg", "-hide_banner", "-nostats", "-i", str(path), "-af", audio_filter, "-f", "null", "-"],
+        capture_output=True, text=True, check=True,
+    ).stderr
+    return float(re.findall(pattern, report)[-1])
+
+
+def mean_volume(path):
+    """Return the mean volume of the sound in dB."""
+    return ffmpeg_report(path, "volumedetect", r"mean_volume: (-?[\d.]+) dB")
+
+
+def loudness(path):
+    """Return the integrated loudness of the sound in LUFS."""
+    return ffmpeg_report(path, "ebur128=framelog=quiet", r"I:\s+(-?[\d.]+) LUFS")
+
+
 def probe(path, entries, fmt="csv=p=0", select=None):
     """Return the text that ffprobe prints for the entries of a file."""
     cmd = ["ffprobe", "-v", "error"]
@@ -401,6 +420,31 @@ class VeditTest(unittest.TestCase):
                 vedit.main(["fade", str(self.clip), *args, "-o", str(self.dir / "never_fade.mp4")])
             self.assertIn("fade", str(caught.exception.code))
 
+    def test_volume(self):
+        before = mean_volume(self.clip)
+        for factor, change in (("0.5", -6), ("2", 6)):
+            with self.subTest(factor=factor):
+                out = self.dir / f"vol{factor}.mp4"
+                vedit.main(["volume", str(self.clip), factor, "-o", str(out)])
+                self.assertAlmostEqual(mean_volume(out) - before, change, delta=0.5)
+                self.assertEqual(streams(out), ["video", "audio"])
+
+    def test_normalize(self):
+        out = self.dir / "norm.mp4"
+        vedit.main(["normalize", str(self.clip), "-o", str(out)])
+        self.assertNotAlmostEqual(loudness(self.clip), -16, delta=1)
+        self.assertAlmostEqual(loudness(out), -16, delta=0.7)
+        self.assertEqual(probe(out, "stream=sample_rate", select="a:0"), "48000")
+        self.assertEqual(streams(out), ["video", "audio"])
+
+    def test_volume_and_normalize_need_sound(self):
+        silent = self.dir / "quiet_vol.mp4"
+        vedit.main(["mute", str(self.clip), "-o", str(silent)])
+        for args in (["volume", str(silent), "2"], ["normalize", str(silent)]):
+            with self.subTest(command=args[0]), self.assertRaises(SystemExit) as caught:
+                vedit.main([*args, "-o", str(self.dir / "never_vol.mp4")])
+            self.assertIn("has no sound", str(caught.exception.code))
+
     def test_watermark_positions(self):
         # The clip is 320x240, the logo is 40x40, and the margin is 10.
         logo = self.make_logo("logo_pos.png")
@@ -609,6 +653,8 @@ class VeditTest(unittest.TestCase):
             (["rotate", "clip.mp4", "90"], "clip_rot90.mp4"),
             (["watermark", "clip.mp4", "logo.png"], "clip_mark.mp4"),
             (["fade", "clip.mp4", "--fade-in", "1"], "clip_fade.mp4"),
+            (["volume", "clip.mp4", "2"], "clip_volume.mp4"),
+            (["normalize", "clip.mp4"], "clip_norm.mp4"),
             (["audio", "clip.mp4"], "clip_audio.mp3"),
             (["mute", "clip.mp4"], "clip_mute.mp4"),
             (["frame", "clip.mp4", "1"], "clip_frame.png"),

@@ -163,6 +163,10 @@ def video_format(src):
         fail(f"cannot read the video stream of {src}")
 
 
+def has_sound(src):
+    return bool(ffprobe(src, "stream=codec_type", "csv=p=0", "a:0"))
+
+
 def cmd_trim(a):
     src = check_input(a.input)
     out = resolve_out(a, src, "trim")
@@ -187,7 +191,7 @@ def cmd_join(a):
     fit = (f"scale={w}:{h}:force_original_aspect_ratio=decrease,"
            f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps={fps},format=yuv420p")
     # ponytail: the output has no sound if one clip has no sound
-    with_audio = all(ffprobe(s, "stream=codec_type", "csv=p=0", "a:0") for s in srcs)
+    with_audio = all(has_sound(s) for s in srcs)
     inputs, parts, labels = [], [], ""
     for i, src in enumerate(srcs):
         inputs += ["-i", ff(src)]
@@ -286,6 +290,24 @@ def cmd_audio(a):
     out = resolve_out(a, src, "audio", ".mp3")
     # ffmpeg picks the audio format from the output extension: .mp3, .wav, .m4a, .flac
     run_ffmpeg(["-i", ff(src), "-vn"], out, a.force)
+
+
+def cmd_volume(a):
+    src = check_input(a.input)
+    if not has_sound(src):
+        fail(f"the clip has no sound: {src}")
+    out = resolve_out(a, src, "volume")
+    run_ffmpeg(["-i", ff(src), "-af", f"volume={a.factor}", "-c:v", "copy"], out, a.force)
+
+
+def cmd_normalize(a):
+    src = check_input(a.input)
+    if not has_sound(src):
+        fail(f"the clip has no sound: {src}")
+    out = resolve_out(a, src, "norm")
+    # One pass of loudnorm aims at -16 LUFS. The filter makes a sample rate of 192 kHz, so aresample resets it.
+    run_ffmpeg(["-i", ff(src), "-af", "loudnorm=I=-16:LRA=11:TP=-1.5,aresample=48000", "-c:v", "copy"],
+               out, a.force)
 
 
 def cmd_mute(a):
@@ -540,6 +562,13 @@ def build_parser():
 
     sp = add("mute", cmd_mute, "remove the sound from a clip",
             "vedit mute clip.mp4")
+    sp.add_argument("input", help="the video file")
+
+    sp = add("volume", cmd_volume, "make the sound louder or quieter", "vedit volume clip.mp4 1.5")
+    sp.add_argument("input", help="the video file")
+    sp.add_argument("factor", type=positive_number, help="2 is twice the volume, 0.5 is half the volume")
+
+    sp = add("normalize", cmd_normalize, "set the loudness of the sound to -16 LUFS", "vedit normalize clip.mp4")
     sp.add_argument("input", help="the video file")
 
     sp = add("frame", cmd_frame, "save one frame of a clip as an image",
