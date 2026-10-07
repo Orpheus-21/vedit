@@ -160,6 +160,12 @@ The `--position` value is `top-left`, `top-right`, `bottom-left`, `bottom-right`
 python3 vedit.py watermark clip.mp4 logo.png --position bottom-right --width 100
 ```
 
+Give the size of the logo with `--width` in pixels, or with `--scale` as a share of the video width. You cannot give both. Without a size, the logo is 100 pixels wide.
+
+```
+python3 vedit.py watermark clip.mp4 logo.png --scale 0.15
+```
+
 Use `--opacity` to make the logo transparent. The value 1 is solid. The value 0.5 is half transparent.
 
 ```
@@ -244,7 +250,8 @@ vedit has no configuration file. All settings are command-line options.
 | `--crf` | `compress` | 28 | Quality, from 0 to 51. A lower value gives higher quality. |
 | `--width`, `--height` | `resize` | none | New size in pixels. Give at least one. |
 | `--position` | `watermark` | `bottom-right` | Place of the logo. |
-| `--width` | `watermark` | 100 | Width of the logo in pixels. Use 1 or more. |
+| `--width` | `watermark` | 100 | Width of the logo in pixels. Use 1 or more. You cannot use it with `--scale`. |
+| `--scale` | `watermark` | none | Width of the logo as a share of the video width. Use a number above 0 and at most 1. |
 | `--margin` | `watermark` | 10 | Space between the logo and the edge in pixels. Use 0 or more. |
 | `--opacity` | `watermark` | 1 | How solid the logo is. Use a number above 0 and at most 1. |
 | `--seconds` | `title` | 3 | Length of the title card in seconds. Use a number above 0. |
