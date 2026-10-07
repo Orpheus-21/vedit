@@ -40,6 +40,12 @@ def check_input(path):
     return path
 
 
+def check_output(out, force):
+    """Stop if the output file exists and the user did not give --force."""
+    if out.exists() and not force:
+        fail(f"output exists: {out} (use --force to overwrite)")
+
+
 def run_tool(cmd, out, name):
     """Run a program with an argument list. Never use a shell.
     If the program fails or the user presses Ctrl+C, delete the output file that this run made."""
@@ -62,8 +68,7 @@ def run_ffmpeg(args, out, force, quiet=False):
     inputs = [a[5:] if a.startswith("file:") else a for prev, a in zip(args, args[1:]) if prev == "-i"]
     if any(Path(i).resolve() == out.resolve() for i in inputs):
         fail(f"the output and the input are the same file: {out}")
-    if out.exists() and not force:
-        fail(f"output exists: {out} (use --force to overwrite)")
+    check_output(out, force)
     run_tool(["ffmpeg", "-hide_banner", "-loglevel", "error", "-stats", "-y", *args, ff(out)],
              out, "ffmpeg")
     if not quiet:
@@ -94,8 +99,7 @@ def check_color(value):
 
 def run_magick(tool, args, out, force):
     """Run ImageMagick with an argument list. The tool is convert or montage."""
-    if out.exists() and not force:
-        fail(f"output exists: {out} (use --force to overwrite)")
+    check_output(out, force)
     cmd = magick_command(tool)
     # An absolute path keeps ImageMagick from reading "a:" in "a:b.jpg" as a format name.
     run_tool([*cmd, *args, str(out.absolute())], out, "ImageMagick")
@@ -305,8 +309,7 @@ def cmd_title(a):
 def cmd_sheet(a):
     src = check_input(a.input)
     out = resolve_out(a, src, "sheet", ".jpg")
-    if out.exists() and not a.force:
-        fail(f"output exists: {out} (use --force to overwrite)")
+    check_output(out, a.force)
     count = a.cols * a.rows
     length = video_duration(src)
     with tempfile.TemporaryDirectory() as tmp:
