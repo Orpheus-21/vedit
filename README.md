@@ -283,6 +283,12 @@ python3 vedit.py title "My Holiday" --seconds 3
 python3 vedit.py join title.mp4 clip.mp4 -o holiday.mp4
 ```
 
+Use `--fade` to fade the card in from black and out to black. The value is the time of each fade in seconds. The two fades must fit in the length of the card.
+
+```
+python3 vedit.py title "My Holiday" --seconds 4 --fade 1
+```
+
 Use `--font` to choose the font. Give a font name from the command `magick -list font`, or the path of a font file. Without `--font`, ImageMagick uses its default font.
 
 ```
@@ -349,6 +355,7 @@ vedit has no configuration file. All settings are command-line options.
 | `--to` | `text` | the end | Time in seconds when the text goes away. Use 0 or more. |
 | `--seconds` | `title` | 3 | Length of the title card in seconds. Use a number above 0. |
 | `--size` | `title` | `1280x720` | Size of the title card. Both numbers must be even. |
+| `--fade` | `title` | none | Time in seconds of the fade in and of the fade out. Use a number above 0. |
 | `--fps` | `title` | 25 | Frames per second of the title card. Use 1 or more. |
 | `--font` | `title` | the ImageMagick default | Font name or path of a font file. vedit stops with an error for a font that ImageMagick cannot use. |
 | `--bg` | `title` | `black` | Background color. Any ImageMagick color works, for example `black` or `#336699`. vedit stops with an error for an unknown color. |
