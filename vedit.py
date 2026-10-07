@@ -392,30 +392,6 @@ def build_parser():
     sp.add_argument("input")
     sp.add_argument("--crf", type=crf_value, default=28, help="quality, 18 is high, 35 is low")
 
-    sp = add("title", cmd_title, "make a title card video (needs ImageMagick)")
-    sp.add_argument("text")
-    sp.add_argument("--seconds", type=positive_number, default=3)
-    sp.add_argument("--size", default="1280x720", help="WIDTHxHEIGHT, even numbers")
-    sp.add_argument("--fps", type=positive_int, default=25)
-    sp.add_argument("--bg", default="black", help="background color")
-    sp.add_argument("--fg", default="white", help="text color")
-
-    sp = add("sheet", cmd_sheet, "make a contact sheet of frames (needs ImageMagick)")
-    sp.add_argument("input")
-    sp.add_argument("--cols", type=positive_int, default=4)
-    sp.add_argument("--rows", type=positive_int, default=3)
-    sp.add_argument("--width", type=positive_int, default=320, help="largest width of each frame in pixels, vedit does not enlarge a clip")
-
-    sp = add("audio", cmd_audio, "save the sound of a clip as an audio file")
-    sp.add_argument("input")
-
-    sp = add("mute", cmd_mute, "remove the sound from a clip")
-    sp.add_argument("input")
-
-    sp = add("frame", cmd_frame, "save one frame of a clip as an image")
-    sp.add_argument("input")
-    sp.add_argument("time", help="time of the frame, for example 5 or 0:01:30")
-
     sp = add("resize", cmd_resize, "change the size of a clip")
     sp.add_argument("input")
     sp.add_argument("--width", type=int, help="width in pixels, an even number")
@@ -431,6 +407,30 @@ def build_parser():
     sp.add_argument("--position", choices=sorted(POSITIONS), default="bottom-right")
     sp.add_argument("--width", type=int, default=100, help="width of the logo in pixels")
     sp.add_argument("--margin", type=int, default=10, help="space to the edge in pixels")
+
+    sp = add("audio", cmd_audio, "save the sound of a clip as an audio file")
+    sp.add_argument("input")
+
+    sp = add("mute", cmd_mute, "remove the sound from a clip")
+    sp.add_argument("input")
+
+    sp = add("frame", cmd_frame, "save one frame of a clip as an image")
+    sp.add_argument("input")
+    sp.add_argument("time", help="time of the frame, for example 5 or 0:01:30")
+
+    sp = add("title", cmd_title, "make a title card video (needs ImageMagick)")
+    sp.add_argument("text")
+    sp.add_argument("--seconds", type=positive_number, default=3)
+    sp.add_argument("--size", default="1280x720", help="WIDTHxHEIGHT, even numbers")
+    sp.add_argument("--fps", type=positive_int, default=25)
+    sp.add_argument("--bg", default="black", help="background color")
+    sp.add_argument("--fg", default="white", help="text color")
+
+    sp = add("sheet", cmd_sheet, "make a contact sheet of frames (needs ImageMagick)")
+    sp.add_argument("input")
+    sp.add_argument("--cols", type=positive_int, default=4)
+    sp.add_argument("--rows", type=positive_int, default=3)
+    sp.add_argument("--width", type=positive_int, default=320, help="largest width of each frame in pixels, vedit does not enlarge a clip")
     return p
 
 
